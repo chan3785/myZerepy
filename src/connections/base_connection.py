@@ -23,7 +23,12 @@ class Action:
                 errors.append(f"Missing required parameter: {param.name}")
             elif param.name in params:
                 try:
-                    params[param.name] = param.type(params[param.name])
+                    # If the parameter is a Connection, pass as is
+                    if param.type == BaseConnection and isinstance(params[param.name], BaseConnection):
+                        continue
+                    else:
+                    # Otherwise, check if the parameter can be cast to its specified type
+                        params[param.name] = param.type(params[param.name])
                 except ValueError:
                     errors.append(f"Invalid type for {param.name}. Expected {param.type.__name__}")
         return errors

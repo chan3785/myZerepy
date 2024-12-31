@@ -65,6 +65,7 @@ class ZerePyAgent:
         self.model_provider = llm_providers[0]
         
         # Load Twitter username for self-reply detection
+        # TODO: This should be done elsewhere
         load_dotenv()
         self.username = os.getenv('TWITTER_USERNAME', '').lower()
 
@@ -115,9 +116,10 @@ class ZerePyAgent:
         
     def loop(self):
         """Main agent loop for autonomous behavior"""
-        self._setup_connections()
-        if not self.is_llm_set:
-            self._setup_llm_provider()
+        # TODO: Fix this
+        #self._setup_connections()
+        #if not self.is_llm_set:
+        #    self._setup_llm_provider()
 
         logger.info("\n🚀 Starting agent loop...")
         logger.info("Press Ctrl+C at any time to stop the loop.")

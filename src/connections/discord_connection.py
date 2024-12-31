@@ -104,14 +104,29 @@ class DiscordConnection(BaseConnection):
     def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """Validate Discord configuration - no config needed"""
         logger.debug("Validating Discord configuration...")
-        return {}
+        return config
 
     def register_actions(self) -> None:
         """Register available Discord actions"""
-        logger.info("📝 Registering Discord actions...")
-        # No actions needed as everything is event-driven
-        self.actions = {}
-        logger.info("✅ Discord actions registered")
+        self.actions = {
+            "start-bot": Action(
+                name="start-bot",
+                parameters=[
+                    ActionParameter(
+                        name="llm_provider",
+                        required=True,
+                        type=BaseConnection,
+                        description="The LLM provider to use for generating responses"
+                    )
+                ],
+                description="Start the discord bot"
+            ),
+            "stop-bot": Action(
+                name="stop-bot",
+                parameters=[],
+                description="Stop the Discord bot"
+            )
+        }
 
     def set_llm_callback(self, callback):
         """Set the callback for LLM text generation"""
@@ -183,6 +198,7 @@ class DiscordConnection(BaseConnection):
             if response.lower() != 'y':
                 return True
 
+        # TODO: Explain/walk through how to set up the bot on the server as well
         print("\n📝 To get your Discord bot token:")
         print("1. Go to https://discord.com/developers/applications")
         print("2. Create a new application or select an existing one")
@@ -242,43 +258,36 @@ class DiscordConnection(BaseConnection):
                 logger.debug(f"Configuration check failed: {e}")
             return False
 
-    def start(self, connection_manager=None):
+    def start_bot(self, llm_provider: BaseConnection=None):
         """Start the Discord bot with automatic LLM setup"""
-        if connection_manager:
-            # Find the first available LLM provider
-            llm_providers = [
-                name for name, conn in connection_manager.connections.items()
-                if conn.is_configured() and conn.is_llm_provider
-            ]
-            
-            if llm_providers:
-                llm_provider = llm_providers[0]
-                logger.info(f"Using {llm_provider} as LLM provider for Discord")
-                
-                def llm_callback(prompt: str) -> str:
-                    try:
-                        # Use the LLM provider's generate-text action
-                        return connection_manager.perform_action(
-                            connection_name=llm_provider,
-                            action_name="generate-text",
-                            params=[prompt, "You are a helpful AI assistant."]
-                        )
-                    except Exception as e:
-                        logger.error(f"Error generating LLM response: {e}")
-                        return None
-                
-                # Set the callback
-                self.set_llm_callback(llm_callback)
-                logger.info(f"✅ LLM callback configured using {llm_provider}")
-            else:
-                logger.error("❌ No configured LLM provider found")
-                return False
+        if llm_provider:
+            logger.info(f"Using {llm_provider} as LLM provider for Discord")
+
+            def llm_callback(prompt: str) -> str:
+                try:
+                    kwargs = {
+                        "prompt": prompt,
+                        # TODO: Prompt should not be hardcoded
+                        "system_prompt": "You are a helpful Discord bot."
+                    }
+                    # Use the LLM provider's generate-text action
+                    return llm_provider.perform_action("generate-text", kwargs)
+                except Exception as e:
+                    logger.error(f"Error generating LLM response: {e}")
+                    return None
+
+            # Set the callback
+            self.set_llm_callback(llm_callback)
+            logger.info(f"✅ LLM callback configured using {llm_provider}")
+        else:
+            logger.error("❌ No configured LLM provider found")
+            return False
         
         # Start the bot
         self._ensure_bot_running()
         return True
 
-    def stop(self):
+    def stop_bot(self):
         """Stop the Discord bot"""
         if self._bot:
             loop = asyncio.new_event_loop()
@@ -289,3 +298,18 @@ class DiscordConnection(BaseConnection):
                 loop.close()
             self._bot = None
             self._running = False
+
+    def perform_action(self, action_name: str, kwargs) -> Any:
+        """Execute a Discord action with validation"""
+        if action_name not in self.actions:
+            raise KeyError(f"Unknown action: {action_name}")
+
+        action = self.actions[action_name]
+        errors = action.validate_params(kwargs)
+        if errors:
+            raise ValueError(f"Invalid parameters: {', '.join(errors)}")
+
+        # Call the appropriate method based on action name
+        method_name = action_name.replace('-', '_')
+        method = getattr(self, method_name)
+        return method(**kwargs)

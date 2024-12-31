@@ -192,7 +192,7 @@ class OpenAIConnection(BaseConnection):
             raise OpenAIAPIError(f"Listing models failed: {e}")
     
     def perform_action(self, action_name: str, kwargs) -> Any:
-        """Execute a Twitter action with validation"""
+        """Execute a OpenAI action with validation"""
         if action_name not in self.actions:
             raise KeyError(f"Unknown action: {action_name}")
 

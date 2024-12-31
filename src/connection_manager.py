@@ -125,17 +125,32 @@ class ConnectionManager:
             # Check if we have enough parameters
             if len(params) != required_params_count:
                 param_names = [param.name for param in action.parameters if param.required]
-                logging.error(f"\nError: Expected {required_params_count} required parameters for {action_name}: {', '.join(param_names)}")
-                return None
+                # LLM provider does not need to be passed as an argument
+                # TODO: Make it possible for user to specify LLM provider
+                param_names.remove("llm_provider")
+
+                # If there are required unmet params (besides llm provider), throw error
+                if len(param_names) > 0:
+                    logging.error(f"\nError: Expected {required_params_count} required parameters for {action_name}: {', '.join(param_names)}")
+                    return None
             
             # Convert list of params to kwargs dictionary
             kwargs = {}
             param_index = 0
             for param in action.parameters:
-                if param.required:
+                if param.name == "llm_provider":
+                    # TODO: Make it possible for user to specify LLM provider
+                    # Choose an available LLM provider
+                    model_providers = self.get_model_providers()
+                    chosen_provider = model_providers[0] # Just pick the first one
+                    llm_provider = self.connections[chosen_provider]
+                    kwargs[param.name] = llm_provider
+                elif param.required:
                     kwargs[param.name] = params[param_index]
                     param_index += 1
-            
+
+            # TODO: Should this be **kwargs? Where do args get unpacked, here or in the connection class?
+            # TODO: This fix involves making the perform_action method in BaseConnection consistent across connections
             return connection.perform_action(action_name, kwargs)
             
         except Exception as e:
