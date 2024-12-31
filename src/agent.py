@@ -116,10 +116,10 @@ class ZerePyAgent:
         
     def loop(self):
         """Main agent loop for autonomous behavior"""
-        # TODO: Fix this
+        # TODO: Remove this and make background loop actions better integrated
         #self._setup_connections()
-        #if not self.is_llm_set:
-        #    self._setup_llm_provider()
+        if not self.is_llm_set:
+            self._setup_llm_provider()
 
         logger.info("\n🚀 Starting agent loop...")
         logger.info("Press Ctrl+C at any time to stop the loop.")
