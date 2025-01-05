@@ -11,6 +11,8 @@ from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.history import FileHistory
 from src.agent import ZerePyAgent
 from src.helpers import print_h_bar
+from src.swarm_manager import SwarmManager
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -186,6 +188,16 @@ class ZerePyCLI:
                 tips=["You can also use Ctrl+D to exit"],
                 handler=self.exit,
                 aliases=['quit', 'q']
+            )
+        )
+
+        # Swarm command
+        self._register_command(
+            Command(
+                name="swarm",
+                description="Start multiple agents simultaneously. Usage: swarm agent1 agent2 ...",
+                tips=["You can stop the swarm with Ctrl+C."],
+                handler=self.swarm_agents
             )
         )
 
@@ -515,6 +527,30 @@ class ZerePyCLI:
         logger.info("\nGoodbye! 👋")
         sys.exit(0)
 
+    def swarm_agents(self, input_list: List[str]):
+        """
+        Start a swarm with multiple agents at once.
+        Once started, CLI will only display swarm activity until Ctrl+C.
+        """
+        if len(input_list) < 2:
+            logger.info("Please specify agent names. Example: swarm agent1 agent2.")
+            return
+
+        agent_names = input_list[1:]
+        logger.info(f"Starting swarm with agents: {', '.join(agent_names)}")
+        
+        swarm_manager = SwarmManager(agent_names)
+        swarm_manager.start_all()
+
+        logger.info("\nSwarm is running. Press Ctrl+C to stop and return to CLI.")
+        try:
+            # Block the CLI thread, only showing swarm output
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            swarm_manager.stop_all()
+            logger.info("\nSwarm stopped. Returning to CLI...")
+            print_h_bar()
 
     ###################
     # Main CLI Loop

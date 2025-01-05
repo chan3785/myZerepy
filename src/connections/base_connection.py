@@ -47,7 +47,7 @@ class BaseConnection(ABC):
         pass
 
     @abstractmethod
-    def validate_config(self, config) -> Dict[str, Any]:
+    def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Validate config from JSON
 

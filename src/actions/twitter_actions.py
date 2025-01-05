@@ -9,7 +9,9 @@ def post_tweet(agent, **kwargs):
     current_time = time.time()
 
     if ("last_tweet_time" not in agent.state):
-        last_tweet_time = 0
+        agent.state["last_tweet_time"] = 0
+
+    last_tweet_time = agent.state["last_tweet_time"]
 
     if current_time - last_tweet_time >= agent.tweet_interval:
         agent.logger.info("\n📝 GENERATING NEW TWEET")

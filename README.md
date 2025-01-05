@@ -136,6 +136,110 @@ Create a new JSON file in the `agents` directory following this structure:
 }
 ```
 
+## Multi-Agent Swarms
+
+ZerePy now supports running multiple agents simultaneously in "swarms". Agents in a swarm can:
+- Run concurrently in separate threads
+- Communicate autonomously via a shared message bus
+- Process messages using their configured LLMs
+- Maintain their individual task loops while communicating
+
+### Creating Swarm-Ready Agents
+
+Create agent configuration files that include message handling capabilities:
+
+```json
+{
+  "name": "SwarmAgent1",
+  "bio": [
+    "You are SwarmAgent1, an AI that engages in deep discussions.",
+    "You process incoming messages and generate thoughtful responses."
+  ],
+  "traits": [
+    "Analytical",
+    "Communicative",
+    "Collaborative"
+  ],
+  "examples": [
+    "That's an interesting perspective on AI consciousness...",
+    "Your point about emergent behavior reminds me of..."
+  ],
+  "loop_delay": 10,
+  "config": [
+    {
+      "name": "openai",
+      "model": "gpt-3.5-turbo"
+    }
+  ],
+  "tasks": [
+    {"name": "message-loop", "weight": 1},
+    {"name": "post-tweet", "weight": 1}
+  ]
+}
+```
+
+### Running a Swarm
+
+1. Configure your LLM connections, for example:
+```bash
+configure-connection openai
+```
+
+2. Start a swarm from the CLI:
+```bash
+swarm agent1 agent2 agent3
+```
+
+The swarm will run autonomously with agents:
+- Processing their individual task loops
+- Collecting messages from the shared message bus
+- Generating responses using their LLM configurations
+- Publishing responses back to the message bus
+- Running until interrupted with Ctrl+C
+
+### Architecture
+
+The swarm system consists of three main components:
+
+1. **SwarmManager**: Orchestrates multiple agents and manages their lifecycle
+2. **MessageBus**: Handles inter-agent communication and message routing
+
+```
+┌─────────────────────────────────────────┐
+│              SwarmManager               │
+├─────────────────────────────────────────┤
+│                                         │
+│  ┌──────────┐        ┌──────────┐       │
+│  │ Agent 1  │◄─────► │ Agent 2  │       │
+│  └──────────┘        └──────────┘       │
+│        ▲                   ▲            │
+│        │                   │            │
+│        └───────┬───────────┘            │
+│                │                        │
+│           ┌──────────┐                  │
+│           │MessageBus│                  │
+│           └──────────┘                  │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+### Message Bus System
+
+The MessageBus enables autonomous inter-agent communication:
+- Thread-safe message publishing and collection
+- Automatic message routing between agents
+- Support for direct and broadcast messages
+- Integrated with agent task loops
+
+### Additional Features
+
+- **Concurrent Execution**: Each agent runs in its own thread
+- **Resource Management**: Shared connection pools and resources
+- **Graceful Shutdown**: Clean shutdown with proper resource cleanup
+- **Autonomous Operation**: No manual intervention needed after launch
+- **Task Integration**: Messages processed alongside regular agent tasks
+```
+
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=blorm-network/ZerePy&type=Date)](https://star-history.com/#blorm-network/ZerePy&Date)
