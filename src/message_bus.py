@@ -55,3 +55,21 @@ class MessageBus:
         except Exception as e:
             logger.error(f"Error fetching messages: {e}")
             return []
+
+    def fetch_for_receiver(self, receiver_id: str) -> List[MessagePayload]:
+        """
+        Retrieve and remove all messages for a given receiver_id.
+        If receiver_id is None, it means broadcast messages.
+        """
+        with self.lock:
+            matching = []
+            remaining = []
+            for m in self.messages:
+                # Include messages where receiver_id matches or is any broadcast
+                if m.receiver_id is None or m.receiver_id == receiver_id:
+                    matching.append(m)
+                else:
+                    remaining.append(m)
+
+            self.messages = remaining
+            return matching
