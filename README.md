@@ -238,7 +238,6 @@ The MessageBus enables autonomous inter-agent communication:
 - **Graceful Shutdown**: Clean shutdown with proper resource cleanup
 - **Autonomous Operation**: No manual intervention needed after launch
 - **Task Integration**: Messages processed alongside regular agent tasks
-```
 
 ## Star History
 
