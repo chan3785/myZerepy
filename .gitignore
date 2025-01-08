@@ -17,3 +17,5 @@ agents/*.json
 
 # macOS
 .DS_Store
+
+stuff.py
