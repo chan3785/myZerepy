@@ -23,7 +23,7 @@ from eth_defi.uniswap_v3.deployment import fetch_deployment
 from eth_defi.uniswap_v3.swap import swap_with_slippage_protection
 
 from src.connections.base_connection import Action, ActionParameter, BaseConnection
-from src.constants import GAS, GAS_PRICE, GAS_PRICE_UNIT
+from src.constants import GAS, GAS_PRICE, GAS_PRICE_UNIT,UNISWAPV2_FACTORY_ADDRESS,UNISWAPV2_ROUTER_ADDRESS
 
 logger = logging.getLogger("connections.evm_connection")
 
@@ -334,18 +334,22 @@ class EvmTradeHelper:
         account: LocalAccount = Account.from_key(private_key)
         my_address = account.address
         web3=connection._get_connection()
+        block_height = web3.eth.block_number
+        logger.debug(f"\n\nBLOCK NUMBER: {block_height}\n\n")
         logger.debug(f"Connected to blockchain, chain id is {web3.eth.chain_id}. the latest block is {web3.eth.block_number:,}")
 
         # Grab Uniswap v3 smart contract addreses for Polygon.
         #
-        deployment_data = UNISWAP_V3_DEPLOYMENTS["polygon"]
+        deployment_data = UNISWAP_V3_DEPLOYMENTS["ethereum"]
+        # check if localnet is used
         uniswap_v3 = fetch_deployment(
-            web3,
-            factory_address=deployment_data["factory"],
-            router_address=deployment_data["router"],
-            position_manager_address=deployment_data["position_manager"],
-            quoter_address=deployment_data["quoter"],
-        )
+                web3,
+                factory_address=deployment_data["factory"],
+                router_address=deployment_data["router"],
+                position_manager_address=deployment_data["position_manager"],
+                quoter_address=deployment_data["quoter"],
+            )
+        
 
         logger.debug(f"Using Uniwap v3 compatible router at {uniswap_v3.swap_router.address}")
         # Enable eth_sendTransaction using this private key
