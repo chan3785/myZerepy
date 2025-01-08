@@ -258,15 +258,18 @@ class EvmConnection(BaseConnection):
         return True
 
     def transfer(
-        self, to_address: str, amount_in_ether: int, token_address: Optional[str] = None
+        self, to_address: str, amount_in_ether: int, token_address: str = None
     ) -> str:
         logger.info(f"STUB: Transfer {amount_in_ether} to {to_address}")
-        if token_address:
-            res = EvmTransferHelper.transfer_token(self, to_address, amount_in_ether)
-            return True
-        else:
-            res = EvmTransferHelper.transfer_evm(self, to_address, amount_in_ether)
-        logger.info(
+        res = EvmTransferHelper.transfer(
+            self._get_connection(),
+            self._get_private_key(),
+            to_address,
+            amount_in_ether,
+            token_address,
+        )
+        res = asyncio.run(res)
+        logger.debug(
             f"Transferred {amount_in_ether} to {to_address}\nTransaction ID: {res}"
         )
         return res
