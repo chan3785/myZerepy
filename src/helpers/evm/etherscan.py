@@ -22,12 +22,14 @@ class EtherscanHelper:
         if not api_key:
             logger.error("ETHERSCAN_KEY not found in environment")
             raise ValueError("ETHERSCAN_KEY not found in environment")
-        logger.debug(f'Found Etherscan API Key: {api_key}')
+        logger.debug(f"Found Etherscan API Key: {api_key}")
 
         # create a client
         throttler = Throttler(rate_limit=5, period=1)
         retry_options = ExponentialRetry(attempts=3)
-        c = EtherscanClient(api_key=api_key, throttler=throttler, retry_options=retry_options)
+        c = EtherscanClient(
+            api_key=api_key, throttler=throttler, retry_options=retry_options
+        )
 
         return c
 
@@ -42,4 +44,3 @@ class EtherscanHelper:
         parsed_abi = parse_abi_string(abi)
         await client.close()
         return parsed_abi
-

@@ -21,30 +21,39 @@ from web3 import Web3
 
 class EvmTradeHelper:
     @staticmethod
-    def trade(web3: Web3, private_key: str, output_token: str, input_amount: float, 
-             input_token: Optional[str], slippage_bps: int = 100) -> str:
-        QUOTE_TOKEN_ADDRESS="0x0000000000000000000000000000000000000000"
-        BASE_TOKEN_ADDRESS="0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    def trade(
+        web3: Web3,
+        private_key: str,
+        output_token: str,
+        input_amount: float,
+        input_token: Optional[str],
+        slippage_bps: int = 100,
+    ) -> str:
+        QUOTE_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000"
+        BASE_TOKEN_ADDRESS = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
         account: LocalAccount = Account.from_key(private_key)
         my_address = account.address
         block_height = web3.eth.block_number
         logger.debug(f"\n\nBLOCK NUMBER: {block_height}\n\n")
-        logger.debug(f"Connected to blockchain, chain id is {web3.eth.chain_id}. the latest block is {web3.eth.block_number:,}")
+        logger.debug(
+            f"Connected to blockchain, chain id is {web3.eth.chain_id}. the latest block is {web3.eth.block_number:,}"
+        )
 
         # Grab Uniswap v3 smart contract addreses for Polygon.
         #
         deployment_data = UNISWAP_V3_DEPLOYMENTS["ethereum"]
         # check if localnet is used
         uniswap_v3 = fetch_deployment(
-                web3,
-                factory_address=deployment_data["factory"],
-                router_address=deployment_data["router"],
-                position_manager_address=deployment_data["position_manager"],
-                quoter_address=deployment_data["quoter"],
-            )
-        
+            web3,
+            factory_address=deployment_data["factory"],
+            router_address=deployment_data["router"],
+            position_manager_address=deployment_data["position_manager"],
+            quoter_address=deployment_data["quoter"],
+        )
 
-        logger.debug(f"Using Uniwap v3 compatible router at {uniswap_v3.swap_router.address}")
+        logger.debug(
+            f"Using Uniwap v3 compatible router at {uniswap_v3.swap_router.address}"
+        )
         # Enable eth_sendTransaction using this private key
         web3.middleware_onion.add(construct_sign_and_send_raw_middleware(account))
 
@@ -61,10 +70,14 @@ class EvmTradeHelper:
         print(f"Your have {quote.fetch_balance_of(my_address)} {quote.symbol}")
         print(f"Your have {gas_balance / (10 ** 18)} for gas fees")
 
-        assert quote.fetch_balance_of(my_address) > 0, f"Cannot perform swap, as you have zero {quote.symbol} needed to swap"
+        assert (
+            quote.fetch_balance_of(my_address) > 0
+        ), f"Cannot perform swap, as you have zero {quote.symbol} needed to swap"
 
         # Ask for transfer details
-        decimal_amount = input(f"How many {quote.symbol} tokens you wish to swap to {base.symbol}? ")
+        decimal_amount = input(
+            f"How many {quote.symbol} tokens you wish to swap to {base.symbol}? "
+        )
 
         # Some input validation
         try:
@@ -91,7 +104,9 @@ class EvmTradeHelper:
         # Uniswap router must be allowed to spent our quote token
         # and we do this by calling ERC20.approve() from our account
         # to the token contract.
-        approve = quote.contract.functions.approve(uniswap_v3.swap_router.address, raw_amount)
+        approve = quote.contract.functions.approve(
+            uniswap_v3.swap_router.address, raw_amount
+        )
         tx_1 = approve.build_transaction(
             {
                 # approve() may take more than 500,000 gas on Arbitrum One
@@ -126,7 +141,7 @@ class EvmTradeHelper:
             max_slippage=20,  # Allow 20 BPS slippage before tx reverts
             amount_in=raw_amount,
             recipient_address=my_address,
-            pool_fees=[500],   # 5 BPS pool WETH-USDC
+            pool_fees=[500],  # 5 BPS pool WETH-USDC
         )
 
         tx_2 = bound_solidity_func.build_transaction(
@@ -150,8 +165,12 @@ class EvmTradeHelper:
         # manually check the transaction hash in a blockchain explorer
         # whether the transaction completed or not.
         tx_wait_minutes = 2.5
-        print(f"Broadcasted transactions {tx_hash_1.hex()}, {tx_hash_2.hex()}, now waiting {tx_wait_minutes} minutes for it to be included in a new block")
-        print(f"View your transactions confirming at https://polygonscan/address/{my_address}")
+        print(
+            f"Broadcasted transactions {tx_hash_1.hex()}, {tx_hash_2.hex()}, now waiting {tx_wait_minutes} minutes for it to be included in a new block"
+        )
+        print(
+            f"View your transactions confirming at https://polygonscan/address/{my_address}"
+        )
         receipts = wait_transactions_to_complete(
             web3,
             [tx_hash_1, tx_hash_2],
@@ -164,9 +183,13 @@ class EvmTradeHelper:
         for completed_tx_hash, receipt in receipts.items():
             if receipt["status"] == 0:
                 revert_reason = fetch_transaction_revert_reason(web3, completed_tx_hash)
-                raise AssertionError(f"Our transaction {completed_tx_hash.hex()} failed because of: {revert_reason}")
+                raise AssertionError(
+                    f"Our transaction {completed_tx_hash.hex()} failed because of: {revert_reason}"
+                )
 
         print("All ok!")
         print(f"After swap, you have {base.fetch_balance_of(my_address)} {base.symbol}")
-        print(f"After swap, you have {quote.fetch_balance_of(my_address)} {quote.symbol}")
+        print(
+            f"After swap, you have {quote.fetch_balance_of(my_address)} {quote.symbol}"
+        )
         print(f"After swap, you have {gas_balance / (10 ** 18)} native token left")
