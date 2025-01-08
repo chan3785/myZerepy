@@ -12,6 +12,7 @@ from web3 import Web3
 
 # src
 from src.connections.base_connection import Action, ActionParameter, BaseConnection
+from src.helpers.evm.read import EvmReadHelper
 from src.helpers.evm.trade import EvmTradeHelper
 from src.helpers.evm.transfer import EvmTransferHelper
 from src.helpers.evm.contract import EvmContractHelper
@@ -298,18 +299,12 @@ class EvmConnection(BaseConnection):
 
     def get_balance(self, token_address: str) -> float:
         logger.info(f"STUB: Get balance")
-        web3 = self._get_connection()
-        priv_key = self._get_private_key()
-        pub_key = get_public_key_from_private_key(priv_key)
-        balance = asyncio.run(
-            EvmContractHelper.read_contract(web3, token_address, "balanceOf", pub_key)
+        res = EvmReadHelper.get_balance(
+            self._get_connection(), self._get_private_key(), token_address
         )
-        decimals = asyncio.run(
-            EvmContractHelper.read_contract(web3, token_address, "decimals")
-        )
-        balance = balance / 10**decimals
-
-        return balance
+        res = asyncio.run(res)
+        logger.debug(f"Balance: {res}")
+        return res
 
     def stake(self, amount: float) -> str:
         logger.info(f"STUB: Stake {amount}")
