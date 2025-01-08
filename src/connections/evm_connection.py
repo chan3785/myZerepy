@@ -12,6 +12,7 @@ from web3 import Web3
 
 # src
 from src.connections.base_connection import Action, ActionParameter, BaseConnection
+from src.helpers.evm.trade import EvmTradeHelper
 from src.helpers.evm.transfer import EvmTransferHelper
 from src.helpers.evm.contract import EvmContractHelper
 from src.helpers.evm.etherscan import EtherscanHelper
@@ -278,14 +279,22 @@ class EvmConnection(BaseConnection):
         self,
         output_mint: str,
         input_amount: float,
-        input_mint: Optional[str] = EVM_TOKENS["WETH"],
+        input_mint: str = EVM_TOKENS["WETH"],
         slippage_bps: int = 100,
     ) -> str:
         logger.info(f"STUB: Swap {input_amount} for {output_mint}")
-        # res=EvmTradeHelper.trade(self, output_mint, input_amount, input_mint, slippage_bps)
-        # logger.info(f"Swapped {input_amount} for {output_mint}\nTransaction ID: {res}")
+        res = EvmTradeHelper.trade(
+            self._get_connection(),
+            self._get_private_key(),
+            output_mint,
+            input_amount,
+            input_mint,
+            slippage_bps,
+        )
+        res = asyncio.run(res)
+        logger.debug(f"Swapped {input_amount} for {output_mint}\nTransaction ID: {res}")
 
-        return "Not implemented"
+        return res
 
     def get_balance(self, token_address: str) -> float:
         logger.info(f"STUB: Get balance")
