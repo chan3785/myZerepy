@@ -13,6 +13,7 @@ from web3 import Web3
 # src
 from src.connections.base_connection import Action, ActionParameter, BaseConnection
 from src.helpers.evm.read import EvmReadHelper
+from src.helpers.evm.stake import EvmStakeHelper
 from src.helpers.evm.trade import EvmTradeHelper
 from src.helpers.evm.transfer import EvmTransferHelper
 from src.helpers.evm.contract import EvmContractHelper
@@ -308,8 +309,14 @@ class EvmConnection(BaseConnection):
 
     def stake(self, amount: float) -> str:
         logger.info(f"STUB: Stake {amount}")
-
-        return "Not implemented"
+        res = EvmStakeHelper.stake(
+            self._get_connection(),
+            self._get_private_key(),
+            amount,
+        )
+        res = asyncio.run(res)
+        logger.debug(f"Staked {amount}\nTransaction ID: {res}")
+        return res
 
     def lend_assets(self, amount: float) -> str:
         logger.info(f"STUB: Lend {amount}")
