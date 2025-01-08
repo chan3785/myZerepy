@@ -51,7 +51,7 @@
     },
     {
       "name": "evm",
-      "rpc": "http://127.0.0.1:8545"
+      "rpc": "https://mainnet.infura.io/v3/73e2cce047964bec94d7df4525e5d7c5"
     }
   ],
   "tasks": [
