@@ -209,3 +209,55 @@ def launch_pump_fun_token(agent, **kwargs):
     except Exception as e:
         agent.logger.error(f"❌ Token launch failed: {str(e)}")
         return False
+
+@register_action("evm-list-contract-functions")
+def list_contract_functions(agent, **kwargs):
+    """List contract functions"""
+    agent.logger.info("\n📜 LISTING CONTRACT FUNCTIONS")
+    try:
+        result = agent.connection_manager.perform_action(
+            connection_name="evm",
+            action_name="list-contract-functions",
+            params=[kwargs.get('contract_address')]
+        )
+        agent.logger.info("✅ Contract functions listed!")
+        return result
+    except Exception as e:
+        agent.logger.error(f"❌ Contract functions listing failed: {str(e)}")
+        return None
+    
+@register_action("evm-call-contract-function")
+def call_contract_function(agent, **kwargs):
+    """Call contract function"""
+    agent.logger.info("\n📞 CALLING CONTRACT FUNCTION")
+    try:
+        result = agent.connection_manager.perform_action(
+            connection_name="evm",
+            action_name="call-contract-function",
+            params=[
+                kwargs.get('contract_address'),
+                kwargs.get('function_name'),
+                kwargs.get('args', [])
+            ]
+        )
+        agent.logger.info("✅ Contract function called!")
+        return result
+    except Exception as e:
+        agent.logger.error(f"❌ Contract function call failed: {str(e)}")
+        return None
+    
+@register_action("evm-wrap-eth")
+def wrap_eth(agent, **kwargs):
+    """Wrap ETH to WETH"""
+    agent.logger.info("\n🎁 WRAPPING ETH TO WETH")
+    try:
+        result = agent.connection_manager.perform_action(
+            connection_name="evm",
+            action_name="wrap-eth",
+            params=[kwargs.get('amount')]
+        )
+        agent.logger.info("✅ ETH wrapped to WETH!")
+        return result
+    except Exception as e:
+        agent.logger.error(f"❌ ETH wrapping failed: {str(e)}")
+        return False

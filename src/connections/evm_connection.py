@@ -1,29 +1,26 @@
-import datetime
-import decimal
+# std
+import asyncio
 import os
-import sys
 import logging
-from decimal import Decimal
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
+# dotenv
 from dotenv import load_dotenv
-from eth_account import Account
-from eth_account.signers.local import LocalAccount
+
+# web3
 from web3 import Web3
-from web3.middleware import construct_sign_and_send_raw_middleware
 from eth_keys import keys
 from eth_utils import decode_hex
-
-from eth_defi.provider.multi_provider import create_multi_provider_web3
-from eth_defi.revert_reason import fetch_transaction_revert_reason
-from eth_defi.token import fetch_erc20_details
-from eth_defi.confirmation import wait_transactions_to_complete
-from eth_defi.uniswap_v3.constants import UNISWAP_V3_DEPLOYMENTS
-from eth_defi.uniswap_v3.deployment import fetch_deployment
-from eth_defi.uniswap_v3.swap import swap_with_slippage_protection
-
+from web3.contract.contract import ContractFunctions
+# src
 from src.connections.base_connection import Action, ActionParameter, BaseConnection
-from src.constants import GAS, GAS_PRICE, GAS_PRICE_UNIT,UNISWAPV2_FACTORY_ADDRESS,UNISWAPV2_ROUTER_ADDRESS
+from src.helpers.evm.transfer import EvmTransferHelper
+from src.helpers.evm.trade import EvmTradeHelper
+from src.helpers.evm.contract import EvmContractHelper
+from src.helpers.evm.etherscan import EtherscanHelper
+from src.constants import EVM_TOKENS
+from src.helpers.evm import get_public_key_from_private_key
+
 
 logger = logging.getLogger("connections.evm_connection")
 
@@ -49,27 +46,24 @@ class EvmConnection(BaseConnection):
         w3.middleware_onion.clear()
         #w3.eth.set_gas_price_strategy(node_default_gas_price_strategy)
         return w3
-
-    def _get_pubkey(self):
-        private_key = self._get_private_key()
-        private_key_bytes = decode_hex(private_key)
-        key = keys.PrivateKey(private_key_bytes)
-        pub_key = key.public_key
-        p=pub_key.to_checksum_address()
-        logger.debug(f"Public key: {p}")
-        return p
     
     def _get_private_key(self):
         creds = self._get_credentials()
         private_key = creds['EVM_PRIVATE_KEY']
         return private_key
 
+    def _get_etherscan_url(self) -> str:
+        creds = self._get_credentials()
+        api_key = creds['ETHERSCAN_KEY']
+        return f"https://api.etherscan.io/api?apikey={api_key}"
+
     def _get_credentials(self) -> Dict[str, str]:
         """Get Evm credentials from environment with validation"""
         logger.debug("Retrieving Evm Credentials")
         load_dotenv()
         required_vars = {
-            "EVM_PRIVATE_KEY": "evm wallet private key"
+            "EVM_PRIVATE_KEY": "evm wallet private key",
+            "ETHERSCAN_KEY": "etherscan API key",
         }
         credentials = {}
         missing = []
@@ -127,7 +121,7 @@ class EvmConnection(BaseConnection):
             "get-balance": Action(
                 name="get-balance",
                 parameters=[
-                    ActionParameter("token_address", False, str, "Token mint address (optional for EVM)")
+                    ActionParameter("token_address", True, str, "Token mint address (optional for EVM)")
                 ],
                 description="Check EVM or token balance"
             ),
@@ -193,7 +187,30 @@ class EvmConnection(BaseConnection):
                     ActionParameter("options", False, dict, "Additional token options")
                 ],
                 description="Launch a Pump & Fun token"
-            )
+            ),
+            "list-contract-functions": Action(
+                name="list-contract-functions",
+                parameters=[
+                    ActionParameter("contract_address", True, str, "Contract address")
+                ],
+                description="List functions of a contract"
+            ),
+            "call-contract": Action(
+                name="call-contract",
+                parameters=[
+                    ActionParameter("contract_address", True, str, "Contract address"),
+                    ActionParameter("method", True, str, "Method name"),
+                    ActionParameter("args", False, list, "Method arguments")
+                ],
+                description="Call a contract method"
+            ),
+            "wrap-eth": Action(
+                name="wrap-eth",
+                parameters=[
+                    ActionParameter("amount_in_ether", True, float, "Amount of ETH to wrap")
+                ],
+                description="Wrap ETH to WETH"
+            ),
         }
 #todo w
     def configure(self) -> bool:
@@ -238,10 +255,16 @@ class EvmConnection(BaseConnection):
 
         return True
 
-    def get_balance(self, token_address: Optional[str] = None) -> float:
+    def get_balance(self, token_address: str) -> float:
         logger.info(f"STUB: Get balance")
-        
-        return 1000.0
+        web3 = self._get_connection()
+        priv_key = self._get_private_key()
+        pub_key = get_public_key_from_private_key(priv_key)
+        balance = asyncio.run(EvmContractHelper.read_contract(web3, token_address, 'balanceOf', pub_key))
+        decimals = asyncio.run(EvmContractHelper.read_contract(web3, token_address, 'decimals'))
+        balance = balance / 10**decimals
+
+        return balance
 
 # todo: test on mainnet
     def stake(self, amount: float) -> bool:
@@ -277,7 +300,52 @@ class EvmConnection(BaseConnection):
     def get_token_by_address(self, mint: str) -> Dict[str, Any]:
         logger.info(f"STUB: Get token by mint {mint}")
         return {}
+    
+    def wrap_eth(self, amount_in_ether: float) -> str:
+        logger.info(f"STUB: Wrap {amount_in_ether}")
+        web3 = self._get_connection()
+        amount_in_wei = web3.to_wei(amount_in_ether, "ether")
+        res = asyncio.run(EvmContractHelper._call(self._get_connection(), self._get_private_key(), EVM_TOKENS['WETH'], 'deposit', amount_in_wei))
+        return res
 
+
+    
+    def list_contract_functions(self, contract_address: str) -> List:
+        logger.info(f"STUB: List contract functions for {contract_address}")
+        abi = asyncio.run(EtherscanHelper.get_contract_abi(contract_address))
+        res_str = ""
+        """
+        example output:
+        1. function_name1
+            arg1:
+                name: arg1_name
+                type: arg1_type
+            arg2:
+                name: arg2_name
+                type: arg2_type
+        2. function_name2
+            arg1:
+                name: arg1_name
+                type: arg1_type
+            arg2:
+                name: arg2_name
+                type: arg2_type 
+
+        """
+        for (x,func) in enumerate(abi,1):
+            if func['type'] == 'function':
+                res_str += f"\n{x}. {func['name']}\n"
+                for input in func['inputs']:
+                    res_str += f"\t{input['name']}:\n"
+                    res_str += f"\t\tname: {input['name']}\n"
+                    res_str += f"\t\ttype: {input['type']}\n"
+
+        return res_str
+
+    def call_contract(self, contract_address: str, method: str, args=[]) -> Any:
+        logger.info(f"STUB: Call contract {contract_address} method {method} with {args}")
+        res = asyncio.run(EvmContractHelper.read_contract(self._get_connection(), contract_address, method, *args))
+        return res
 #todo: test on mainnet
     def launch_pump_token(self, token_name: str, token_ticker: str, 
                          description: str, image_url: str, 
@@ -300,182 +368,5 @@ class EvmConnection(BaseConnection):
         method = getattr(self, method_name)
         return method(**kwargs)
     
-class EvmTransferHelper:
-    @staticmethod
-    def transfer_evm(connection: EvmConnection, to_address: str, amount_in_ether: float) -> str:
-        pub_key = connection._get_pubkey()
-        priv_key = connection._get_private_key()
-        w3 = connection._get_connection()
-        nonce = w3.eth.get_transaction_count(pub_key)
-        amount_in_wei = w3.to_wei(amount_in_ether, "ether")
-        transaction = {
-            "to": to_address,
-            "value": amount_in_wei,
-            "nonce": nonce,
-            "gas": GAS,
-            "gasPrice": w3.to_wei(GAS_PRICE, GAS_PRICE_UNIT),
-        }
-        signed_transaction = w3.eth.account.sign_transaction(transaction, priv_key)
-        tx_hash = w3.eth.send_raw_transaction(signed_transaction.rawTransaction)
-        return tx_hash.hex()
-
-        
-
-    #@staticmethod
-    #def transfer_token(connection: EvmConnection, to_address: str, amount_in_tokens: float) -> str:
-
-class EvmTradeHelper:
-    @staticmethod
-    def trade(connection: EvmConnection, output_token: str, input_amount: float, 
-             input_token: Optional[str], slippage_bps: int = 100) -> str:
-        QUOTE_TOKEN_ADDRESS=input_token
-        BASE_TOKEN_ADDRESS=output_token
-        private_key = connection._get_private_key()
-        account: LocalAccount = Account.from_key(private_key)
-        my_address = account.address
-        web3=connection._get_connection()
-        block_height = web3.eth.block_number
-        logger.debug(f"\n\nBLOCK NUMBER: {block_height}\n\n")
-        logger.debug(f"Connected to blockchain, chain id is {web3.eth.chain_id}. the latest block is {web3.eth.block_number:,}")
-
-        # Grab Uniswap v3 smart contract addreses for Polygon.
-        #
-        deployment_data = UNISWAP_V3_DEPLOYMENTS["ethereum"]
-        # check if localnet is used
-        uniswap_v3 = fetch_deployment(
-                web3,
-                factory_address=deployment_data["factory"],
-                router_address=deployment_data["router"],
-                position_manager_address=deployment_data["position_manager"],
-                quoter_address=deployment_data["quoter"],
-            )
-        
-
-        logger.debug(f"Using Uniwap v3 compatible router at {uniswap_v3.swap_router.address}")
-        # Enable eth_sendTransaction using this private key
-        web3.middleware_onion.add(construct_sign_and_send_raw_middleware(account))
-
-        # Read on-chain ERC-20 token data (name, symbol, etc.)
-        base = fetch_erc20_details(web3, BASE_TOKEN_ADDRESS)
-        quote = fetch_erc20_details(web3, QUOTE_TOKEN_ADDRESS)
-
-        # Native token balance
-        # See https://tradingstrategy.ai/glossary/native-token
-        gas_balance = web3.eth.get_balance(account.address)
-
-        print(f"Your address is {my_address}")
-        print(f"Your have {base.fetch_balance_of(my_address)} {base.symbol}")
-        print(f"Your have {quote.fetch_balance_of(my_address)} {quote.symbol}")
-        print(f"Your have {gas_balance / (10 ** 18)} for gas fees")
-
-        assert quote.fetch_balance_of(my_address) > 0, f"Cannot perform swap, as you have zero {quote.symbol} needed to swap"
-
-        # Ask for transfer details
-        decimal_amount = input(f"How many {quote.symbol} tokens you wish to swap to {base.symbol}? ")
-
-        # Some input validation
-        try:
-            decimal_amount = Decimal(decimal_amount)
-        except (ValueError, decimal.InvalidOperation) as e:
-            raise AssertionError(f"Not a good decimal amount: {decimal_amount}") from e
-
-        # Fat-fingering check
-        print(f"Confirm swap amount {decimal_amount} {quote.symbol} to {base.symbol}")
-        confirm = input("Ok [y/n]?")
-        if not confirm.lower().startswith("y"):
-            print("Aborted")
-            sys.exit(1)
-
-        # Convert a human-readable number to fixed decimal with 18 decimal places
-        raw_amount = quote.convert_to_raw(decimal_amount)
-
-        # Each DEX trade is two transactions
-        # - ERC-20.approve()
-        # - swap (various functions)
-        # This is due to bad design of ERC-20 tokens,
-        # more here https://twitter.com/moo9000/status/1619319039230197760
-
-        # Uniswap router must be allowed to spent our quote token
-        # and we do this by calling ERC20.approve() from our account
-        # to the token contract.
-        approve = quote.contract.functions.approve(uniswap_v3.swap_router.address, raw_amount)
-        tx_1 = approve.build_transaction(
-            {
-                # approve() may take more than 500,000 gas on Arbitrum One
-                "gas": 850_000,
-                "from": my_address,
-            }
-        )
-
-        #
-        # Uniswap v3 may have multiple pools per
-        # trading pair differetiated by the fee tier. For example
-        # WETH-USDC has pools of 0.05%, 0.30% and 1%
-        # fees. Check for different options
-        # in https://tradingstrategy.ai/search
-        #
-        # Here we use 5 BPS fee pool (5/10,000).
-        #
-        #
-        # Build a swap transaction with slippage protection
-        #
-        # Slippage protection is very important, or you
-        # get instantly overrun by MEV bots with
-        # sandwitch attacks
-        #
-        # https://tradingstrategy.ai/glossary/mev
-        #
-        #
-        bound_solidity_func = swap_with_slippage_protection(
-            uniswap_v3,
-            base_token=base,
-            quote_token=quote,
-            max_slippage=20,  # Allow 20 BPS slippage before tx reverts
-            amount_in=raw_amount,
-            recipient_address=my_address,
-            pool_fees=[500],   # 5 BPS pool WETH-USDC
-        )
-
-        tx_2 = bound_solidity_func.build_transaction(
-            {
-                # Uniswap swap should not take more than 1M gas units.
-                # We do not use automatic gas estimation, as it is unreliable
-                # and the number here is the maximum value only.
-                # Only way to know this number is by trial and error
-                # and experience.
-                "gas": 1_000_000,
-                "from": my_address,
-            }
-        )
-
-        # Sign and broadcast the transaction using our private key
-        tx_hash_1 = web3.eth.send_transaction(tx_1)
-        tx_hash_2 = web3.eth.send_transaction(tx_2)
-
-        # This will raise an exception if we do not confirm within the timeout.
-        # If the timeout occurs the script abort and you need to
-        # manually check the transaction hash in a blockchain explorer
-        # whether the transaction completed or not.
-        tx_wait_minutes = 2.5
-        print(f"Broadcasted transactions {tx_hash_1.hex()}, {tx_hash_2.hex()}, now waiting {tx_wait_minutes} minutes for it to be included in a new block")
-        print(f"View your transactions confirming at https://polygonscan/address/{my_address}")
-        receipts = wait_transactions_to_complete(
-            web3,
-            [tx_hash_1, tx_hash_2],
-            max_timeout=datetime.timedelta(minutes=tx_wait_minutes),
-            confirmation_block_count=1,
-        )
-
-        # Check if any our transactions failed
-        # and display the reason
-        for completed_tx_hash, receipt in receipts.items():
-            if receipt["status"] == 0:
-                revert_reason = fetch_transaction_revert_reason(web3, completed_tx_hash)
-                raise AssertionError(f"Our transaction {completed_tx_hash.hex()} failed because of: {revert_reason}")
-
-        print("All ok!")
-        print(f"After swap, you have {base.fetch_balance_of(my_address)} {base.symbol}")
-        print(f"After swap, you have {quote.fetch_balance_of(my_address)} {quote.symbol}")
-        print(f"After swap, you have {gas_balance / (10 ** 18)} native token left")
 
 
