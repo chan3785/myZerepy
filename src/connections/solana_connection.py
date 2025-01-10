@@ -17,6 +17,7 @@ from src.helpers.solana.performance import SolanaPerformanceTracker
 from src.helpers.solana.transfer import SolanaTransferHelper
 from src.helpers.solana.read import SolanaReadHelper
 
+from agentipy import SolanaAgentKit
 
 from dotenv import load_dotenv, set_key
 
@@ -81,6 +82,11 @@ class SolanaConnection(BaseConnection):
         Keypair.from_base58_string(credentials["SOLANA_PRIVATE_KEY"])
         logger.debug("All required credentials found")
         return credentials
+
+    def _get_agentipy(self) -> SolanaAgentKit:
+        priv_key = self._get_credentials()["SOLANA_PRIVATE_KEY"]
+        agentipy = SolanaAgentKit(priv_key, self.config["rpc"])
+        return agentipy
 
     def _get_jupiter(self, keypair, async_client):
         jupiter = Jupiter(
@@ -286,15 +292,10 @@ class SolanaConnection(BaseConnection):
     def transfer(
         self, to_address: str, amount: float, token_mint: Optional[str] = None
     ) -> str:
-        res = SolanaTransferHelper.transfer(
-            self._get_connection_async(),
-            self._get_wallet(),
-            to_address,
-            amount,
-            token_mint,
-        )
+        logger.info(f"Transferring {amount} to {to_address}")
+        agent = self._get_agentipy()
+        res = agent.transfer(to_address, amount, token_mint)
         res = asyncio.run(res)
-        logger.debug(f"Transferred {amount} to {to_address}\nTransaction ID: {res}")
         return res
 
     # todo: test on mainnet
@@ -306,88 +307,75 @@ class SolanaConnection(BaseConnection):
         slippage_bps: int = 100,
     ) -> str:
         logger.info(f"Swapping {input_amount} for {output_mint}")
-        wallet = self._get_wallet()
-        async_client = self._get_connection_async()
-        jupiter = self._get_jupiter(wallet, async_client)
-        res = TradeManager.trade(
-            async_client,
-            wallet,
-            jupiter,
-            output_mint,
-            input_amount,
-            input_mint,
-            slippage_bps,
-        )
+        agent = self._get_agentipy()
+        res = agent.trade(output_mint, input_amount, input_mint, slippage_bps)
         res = asyncio.run(res)
         return res
 
     def get_balance(self, token_address: str = None) -> float:
-        if not token_address:
-            logger.info("Getting SOL balance")
-        else:
-            logger.info(f"Getting balance for {token_address}")
-        res = SolanaReadHelper.get_balance(
-            self._get_connection_async(), self._get_wallet(), token_address
-        )
+        logger.info("Fetching balance")
+        agent = self._get_agentipy()
+        res = agent.get_balance(token_address)
         res = asyncio.run(res)
         return res
 
     def stake(self, amount: float) -> str:
         logger.info(f"Staking {amount} SOL")
-        res = StakeManager.stake_with_jup(
-            self._get_connection_async(), self._get_wallet(), amount
-        )
+        agent = self._get_agentipy()
+        res = agent.stake(amount)
         res = asyncio.run(res)
-        logger.debug(f"Staked {amount} SOL\nTransaction ID: {res}")
         return res
 
     # todo: test on mainnet
     def lend_assets(self, amount: float) -> str:
-        return "Not implemented"
-        # logger.info(f"STUB: Lend {amount}")
-        # res = AssetLender.lend_asset(
-        #     self._get_connection_async(), self._get_wallet(), amount
-        # )
-        # res = asyncio.run(res)
-        # logger.debug(f"Lent {amount} USDC\nTransaction ID: {res}")
-        # return res
+        logger.info(f"Lending {amount} assets")
+        agent = self._get_agentipy()
+        res = agent.lend_assets(amount)
+        res = asyncio.run(res)
+        return res
 
     def request_faucet(self) -> str:
         logger.info("Requesting faucet funds")
-        res = FaucetManager.request_faucet_funds(self)
+        agent = self._get_agentipy()
+        res = agent.request_faucet_funds()
         res = asyncio.run(res)
-        logger.debug(f"Requested faucet funds\nTransaction ID: {res}")
         return res
 
     def deploy_token(self, decimals: int = 9) -> str:
-        return "Not implemented"
-        # logger.info(f"STUB: Deploy token with {decimals} decimals")
-        # res = TokenDeploymentManager.deploy_token(
-        #     self._get_connection_async(), self._get_wallet(), decimals
-        # )
-        # res = asyncio.run(res)
-        # logger.debug(
-        #     f"Deployed token with {decimals} decimals\nToken Mint: {res['mint']}"
-        # )
-        # return res["mint"]
+        logger.info(f"Deploying token with {decimals} decimals")
+        agent = self._get_agentipy()
+        res = agent.deploy_token(decimals)
+        res = asyncio.run(res)
+        return res
 
     def fetch_price(self, token_id: str) -> float:
-        return SolanaReadHelper.fetch_price(token_id)
+        logger.info(f"Fetching price for {token_id}")
+        agent = self._get_agentipy()
+        res = agent.fetch_price(token_id)
+        res = asyncio.run(res)
+        return res
 
     # todo: test on mainnet
     def get_tps(self) -> int:
-        res = SolanaPerformanceTracker.fetch_current_tps(self._get_connection_async())
+        logger.info("Fetching TPS")
+        agent = self._get_agentipy()
+        res = agent.get_tps()
         res = asyncio.run(res)
         return res
 
     def get_token_by_ticker(self, ticker: str) -> str:
-        ticker = ticker.upper()
-        if ticker in SPL_TOKENS:
-            return SPL_TOKENS[ticker]
-        return SolanaReadHelper.get_token_by_ticker(ticker)
+        logger.info(f"Fetching token data for {ticker}")
+        agent = self._get_agentipy()
+        res = agent.get_token_data_by_ticker(ticker)
+        res = asyncio.run(res)
+        return res
 
     def get_token_by_address(self, mint: str) -> Dict[str, Any]:
-        return SolanaReadHelper.get_token_by_address(mint)
+        logger.info(f"Fetching token data for {mint}")
+        agent = self._get_agentipy()
+        res = agent.get_token_data_by_address(mint)
+        res = asyncio.run(res)
+        return res
 
     # todo: test on mainnet
     def launch_pump_token(
@@ -398,22 +386,13 @@ class SolanaConnection(BaseConnection):
         image_url: str,
         options: Optional[Dict[str, Any]] = None,
     ) -> str:
-        return "Not implemented"
-        # logger.info(f"STUB: Launch Pump & Fun token {token_ticker}")
-        # res = PumpfunTokenManager.launch_pumpfun_token(
-        #    self._get_connection_async(),
-        #    self._get_wallet(),
-        #    token_name,
-        #    token_ticker,
-        #    description,
-        #    image_url,
-        #    options,
-        # )
-        # res = asyncio.run(res)
-        # logger.debug(
-        #    f"Launched Pump & Fun token {token_ticker}\nToken Mint: {res['mint']}"
-        # )
-        # return res
+        logger.info(f"Launching Pump & Fun token {token_name}")
+        agent = self._get_agentipy()
+        res = agent.launch_pump_fun_token(
+            token_name, token_ticker, description, image_url, options
+        )
+        res = asyncio.run(res)
+        return res
 
     def perform_action(self, action_name: str, kwargs) -> Any:
         """Execute a Solana action with validation"""
