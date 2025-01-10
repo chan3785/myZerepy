@@ -31,6 +31,11 @@ class EvmReadHelper:
         decimals = EvmContractHelper.read_contract(web3, token_address, "decimals")
         return balance / 10**decimals
 
+    @staticmethod
+    def get_coin_by_address(cg: CoinGeckoAPI, address: str) -> str:
+        coin = cg.get_coin_info_from_contract_address_by_id("ethereum", address)
+        return coin["name"]
+
     """ 
     @staticmethod
     async def fetch_price(web3: Web3, contract_address: str) -> float:

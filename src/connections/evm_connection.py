@@ -353,7 +353,8 @@ class EvmConnection(BaseConnection):
 
     def get_token_by_address(self, mint: str) -> Dict[str, Any]:
         logger.info(f"STUB: Get token by mint {mint}")
-        raise NotImplementedError("Not implemented")
+        res = EvmReadHelper.get_coin_by_address(self._get_cg(), mint)
+        return res
         # return {}
 
     def wrap_eth(self, amount_in_ether: float) -> str:
