@@ -18,6 +18,8 @@ from eth_defi.uniswap_v3.swap import swap_with_slippage_protection
 
 from web3 import Web3
 
+from src.constants import EVM_TOKENS
+
 
 class EvmTradeHelper:
     @staticmethod
@@ -26,11 +28,11 @@ class EvmTradeHelper:
         private_key: str,
         output_token: str,
         input_amount: float,
-        input_token: Optional[str],
+        input_token: str = EVM_TOKENS["WETH"],
         slippage_bps: int = 100,
     ) -> str:
-        QUOTE_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000"
-        BASE_TOKEN_ADDRESS = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        QUOTE_TOKEN_ADDRESS = input_token
+        BASE_TOKEN_ADDRESS = output_token
         account: LocalAccount = Account.from_key(private_key)
         my_address = account.address
         block_height = web3.eth.block_number
@@ -75,9 +77,7 @@ class EvmTradeHelper:
         ), f"Cannot perform swap, as you have zero {quote.symbol} needed to swap"
 
         # Ask for transfer details
-        decimal_amount = input(
-            f"How many {quote.symbol} tokens you wish to swap to {base.symbol}? "
-        )
+        decimal_amount = input_amount
 
         # Some input validation
         try:
