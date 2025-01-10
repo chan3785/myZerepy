@@ -21,6 +21,7 @@ from src.helpers.evm.etherscan import EtherscanHelper
 from src.constants import EVM_TOKENS
 from src.helpers.evm import get_public_key_from_private_key
 
+from pycoingecko import CoinGeckoAPI
 
 logger = logging.getLogger("connections.evm_connection")
 
@@ -54,6 +55,11 @@ class EvmConnection(BaseConnection):
         # w3.eth.set_gas_price_strategy(node_default_gas_price_strategy)
         return w3
 
+    def _get_cg(self) -> CoinGeckoAPI:
+        creds = self._get_credentials()
+        cg = CoinGeckoAPI(api_key=creds["COINGECKO_KEY"])
+        return cg
+
     def _get_private_key(self):
         creds = self._get_credentials()
         private_key = creds["EVM_PRIVATE_KEY"]
@@ -71,6 +77,7 @@ class EvmConnection(BaseConnection):
         required_vars = {
             "EVM_PRIVATE_KEY": "evm wallet private key",
             "ETHERSCAN_KEY": "etherscan API key",
+            "COINGECKO_KEY": "coingecko API key",
         }
         credentials = {}
         missing = []
@@ -340,8 +347,7 @@ class EvmConnection(BaseConnection):
         # return 100
 
     def get_token_by_ticker(self, ticker: str) -> Dict[str, Any]:
-        logger.info(f"STUB: Get token by ticker {ticker}")
-        raise NotImplementedError("Not implemented")
+        return EvmReadHelper.get_coin_by_ticker(self._get_cg(), ticker)
 
         # return {}
 
