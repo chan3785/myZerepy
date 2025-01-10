@@ -163,25 +163,6 @@ class EvmConnection(BaseConnection):
                 ],
                 description="Stake EVM",
             ),
-            "lend-assets": Action(
-                name="lend-assets",
-                parameters=[ActionParameter("amount", True, float, "Amount to lend")],
-                description="Lend assets",
-            ),
-            "request-faucet": Action(
-                name="request-faucet",
-                parameters=[],
-                description="Request funds from faucet for testing",
-            ),
-            "deploy-token": Action(
-                name="deploy-token",
-                parameters=[
-                    ActionParameter(
-                        "decimals", False, int, "Token decimals (default 9)"
-                    )
-                ],
-                description="Deploy a new token",
-            ),
             "fetch-price": Action(
                 name="fetch-price",
                 parameters=[
@@ -190,9 +171,6 @@ class EvmConnection(BaseConnection):
                     )
                 ],
                 description="Get token price",
-            ),
-            "get-tps": Action(
-                name="get-tps", parameters=[], description="Get current Evm TPS"
             ),
             "get-token-by-ticker": Action(
                 name="get-token-by-ticker",
@@ -205,17 +183,6 @@ class EvmConnection(BaseConnection):
                 name="get-token-by-address",
                 parameters=[ActionParameter("mint", True, str, "Token mint address")],
                 description="Get token data by mint address",
-            ),
-            "launch-pump-token": Action(
-                name="launch-pump-token",
-                parameters=[
-                    ActionParameter("token_name", True, str, "Name of the token"),
-                    ActionParameter("token_ticker", True, str, "Token ticker symbol"),
-                    ActionParameter("description", True, str, "Token description"),
-                    ActionParameter("image_url", True, str, "Token image URL"),
-                    ActionParameter("options", False, dict, "Additional token options"),
-                ],
-                description="Launch a Pump & Fun token",
             ),
             "list-contract-functions": Action(
                 name="list-contract-functions",
@@ -340,11 +307,6 @@ class EvmConnection(BaseConnection):
     def fetch_price(self, token_id: str) -> str:
         logger.info(f"STUB: Fetch price for {token_id}")
         return "Not implemented"
-
-    def get_tps(self) -> int:
-        logger.info(f"STUB: Get TPS")
-        raise NotImplementedError("Not implemented")
-        # return 100
 
     def get_token_by_ticker(self, ticker: str) -> Dict[str, Any]:
         return EvmReadHelper.get_coin_by_ticker(self._get_cg(), ticker)
