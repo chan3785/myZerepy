@@ -7,15 +7,16 @@ from typing import Dict, Any, Optional
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
 from src.types import JupiterTokenData
 from src.constants import LAMPORTS_PER_SOL, SPL_TOKENS
-from src.helpers.solana.pumpfun import PumpfunTokenManager
-from src.helpers.solana.faucet import FaucetManager
-from src.helpers.solana.lend import AssetLender
-from src.helpers.solana.stake import StakeManager
-from src.helpers.solana.trade import TradeManager
-from src.helpers.solana.token_deploy import TokenDeploymentManager
-from src.helpers.solana.performance import SolanaPerformanceTracker
-from src.helpers.solana.transfer import SolanaTransferHelper
-from src.helpers.solana.read import SolanaReadHelper
+
+# from src.helpers.solana.pumpfun import PumpfunTokenManager
+# from src.helpers.solana.faucet import FaucetManager
+# from src.helpers.solana.lend import AssetLender
+# from src.helpers.solana.stake import StakeManager
+# from src.helpers.solana.trade import TradeManager
+# from src.helpers.solana.token_deploy import TokenDeploymentManager
+# from src.helpers.solana.performance import SolanaPerformanceTracker
+# from src.helpers.solana.transfer import SolanaTransferHelper
+# from src.helpers.solana.read import SolanaReadHelper
 
 from agentipy import SolanaAgentKit
 
@@ -28,6 +29,7 @@ from solana.rpc.commitment import Confirmed
 
 from solders.keypair import Keypair  # type: ignore
 
+from solders.pubkey import Pubkey  # type: ignore
 
 logger = logging.getLogger("connections.solana_connection")
 
@@ -298,7 +300,6 @@ class SolanaConnection(BaseConnection):
         res = asyncio.run(res)
         return res
 
-    # todo: test on mainnet
     def trade(
         self,
         output_mint: str,
@@ -315,10 +316,11 @@ class SolanaConnection(BaseConnection):
     def get_balance(self, token_address: str = None) -> float:
         logger.info("Fetching balance")
         agent = self._get_agentipy()
-        res = agent.get_balance(token_address)
+        res = agent.get_balance(Pubkey.from_string(token_address))
         res = asyncio.run(res)
         return res
 
+    # good
     def stake(self, amount: float) -> str:
         logger.info(f"Staking {amount} SOL")
         agent = self._get_agentipy()
@@ -348,6 +350,7 @@ class SolanaConnection(BaseConnection):
         res = asyncio.run(res)
         return res
 
+    # good
     def fetch_price(self, token_id: str) -> float:
         logger.info(f"Fetching price for {token_id}")
         agent = self._get_agentipy()
@@ -355,7 +358,7 @@ class SolanaConnection(BaseConnection):
         res = asyncio.run(res)
         return res
 
-    # todo: test on mainnet
+    # good
     def get_tps(self) -> int:
         logger.info("Fetching TPS")
         agent = self._get_agentipy()
