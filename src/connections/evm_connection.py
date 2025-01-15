@@ -12,16 +12,17 @@ from web3 import Web3
 
 # src
 from src.connections.base_connection import Action, ActionParameter, BaseConnection
-from src.helpers.evm.read import EvmReadHelper
-from src.helpers.evm.stake import EvmStakeHelper
-from src.helpers.evm.trade import EvmTradeHelper
 from src.helpers.evm.transfer import EvmTransferHelper
 from src.helpers.evm.contract import EvmContractHelper
 from src.helpers.evm.etherscan import EtherscanHelper
+from src.helpers.evm.trade import EvmTradeHelper
 from src.constants import EVM_TOKENS
 from src.helpers.evm import get_public_key_from_private_key
 
-from pycoingecko import CoinGeckoAPI
+from aioetherscan import Client as EtherscanClient
+from asyncio_throttle import Throttler
+from aiohttp_retry import ExponentialRetry
+
 
 logger = logging.getLogger("connections.evm_connection")
 
@@ -40,7 +41,8 @@ class EvmConfigurationError(EvmConnectionError):
 
 class EvmConnection(BaseConnection):
     def __init__(self, config: Dict[str, Any]):
-        logger.info("Initializing Evm connection...")
+        self.chain = str(config["name"]).split("-")[1]
+        logger.info(f"Initializing Evm connection for {self.chain}...")
         super().__init__(config)
 
     @property
@@ -55,29 +57,40 @@ class EvmConnection(BaseConnection):
         # w3.eth.set_gas_price_strategy(node_default_gas_price_strategy)
         return w3
 
-    def _get_cg(self) -> CoinGeckoAPI:
-        creds = self._get_credentials()
-        cg = CoinGeckoAPI(api_key=creds["COINGECKO_KEY"])
-        return cg
-
     def _get_private_key(self):
         creds = self._get_credentials()
-        private_key = creds["EVM_PRIVATE_KEY"]
+        private_key = creds[f"{self.chain.upper()}_PRIVATE_KEY"]
         return private_key
 
-    def _get_etherscan_url(self) -> str:
+    def _get_etherscan_client(self) -> EtherscanClient:
         creds = self._get_credentials()
-        api_key = creds["ETHERSCAN_KEY"]
-        return f"https://api.etherscan.io/api?apikey={api_key}"
+        url = self.config["scanner"]
+        path = f"{self.chain.upper()}_SCANNER_KEY"
+        api_key = creds[path]
+        url = f"https://{url}/api?apikey={api_key}"
+        if not api_key:
+            logger.error(f"{path} not found in environment")
+            raise ValueError(f"{path} not found in environment")
+        logger.debug(f"Found Scanner API Key: {api_key}")
+
+        # create a client
+        throttler = Throttler(rate_limit=5, period=1)
+        retry_options = ExponentialRetry(attempts=3)
+        c = EtherscanClient(
+            api_key=api_key, throttler=throttler, retry_options=retry_options
+        )
+
+        return c
 
     def _get_credentials(self) -> Dict[str, str]:
         """Get Evm credentials from environment with validation"""
         logger.debug("Retrieving Evm Credentials")
         load_dotenv()
+        scanner_key = f"{self.chain.upper()}_SCANNER_KEY"
+        private_key = f"{self.chain.upper()}_PRIVATE_KEY"
         required_vars = {
-            "EVM_PRIVATE_KEY": "evm wallet private key",
-            "ETHERSCAN_KEY": "etherscan API key",
-            "COINGECKO_KEY": "coingecko API key",
+            scanner_key: "Etherscan API key",
+            private_key: " EVM private key",
         }
         credentials = {}
         missing = []
@@ -95,9 +108,12 @@ class EvmConnection(BaseConnection):
         logger.debug("All required credentials found")
         return credentials
 
+    def _get_scanner_url_for_tx(self, tx_hash: str) -> str:
+        return f"https://{self.config['scanner']}/tx/{tx_hash}"
+
     def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """Validate Evm configuration from JSON"""
-        required_fields = ["rpc"]
+        required_fields = ["rpc", "scanner"]
         missing_fields = [field for field in required_fields if field not in config]
         if missing_fields:
             raise ValueError(
@@ -149,7 +165,7 @@ class EvmConnection(BaseConnection):
                 parameters=[
                     ActionParameter(
                         "token_address",
-                        True,
+                        False,
                         str,
                         "Token mint address (optional for EVM)",
                     )
@@ -163,6 +179,25 @@ class EvmConnection(BaseConnection):
                 ],
                 description="Stake EVM",
             ),
+            "lend-assets": Action(
+                name="lend-assets",
+                parameters=[ActionParameter("amount", True, float, "Amount to lend")],
+                description="Lend assets",
+            ),
+            "request-faucet": Action(
+                name="request-faucet",
+                parameters=[],
+                description="Request funds from faucet for testing",
+            ),
+            "deploy-token": Action(
+                name="deploy-token",
+                parameters=[
+                    ActionParameter(
+                        "decimals", False, int, "Token decimals (default 9)"
+                    )
+                ],
+                description="Deploy a new token",
+            ),
             "fetch-price": Action(
                 name="fetch-price",
                 parameters=[
@@ -171,6 +206,9 @@ class EvmConnection(BaseConnection):
                     )
                 ],
                 description="Get token price",
+            ),
+            "get-tps": Action(
+                name="get-tps", parameters=[], description="Get current Evm TPS"
             ),
             "get-token-by-ticker": Action(
                 name="get-token-by-ticker",
@@ -183,6 +221,17 @@ class EvmConnection(BaseConnection):
                 name="get-token-by-address",
                 parameters=[ActionParameter("mint", True, str, "Token mint address")],
                 description="Get token data by mint address",
+            ),
+            "launch-pump-token": Action(
+                name="launch-pump-token",
+                parameters=[
+                    ActionParameter("token_name", True, str, "Name of the token"),
+                    ActionParameter("token_ticker", True, str, "Token ticker symbol"),
+                    ActionParameter("description", True, str, "Token description"),
+                    ActionParameter("image_url", True, str, "Token image URL"),
+                    ActionParameter("options", False, dict, "Additional token options"),
+                ],
+                description="Launch a Pump & Fun token",
             ),
             "list-contract-functions": Action(
                 name="list-contract-functions",
@@ -235,18 +284,15 @@ class EvmConnection(BaseConnection):
         return True
 
     def transfer(
-        self, to_address: str, amount_in_ether: int, token_address: str = None
+        self, to_address: str, amount_in_ether: int, token_address: Optional[str] = None
     ) -> str:
         logger.info(f"STUB: Transfer {amount_in_ether} to {to_address}")
-        res = EvmTransferHelper.transfer(
-            self._get_connection(),
-            self._get_private_key(),
-            to_address,
-            amount_in_ether,
-            token_address,
-        )
-        res = asyncio.run(res)
-        logger.debug(
+        if token_address:
+            res = EvmTransferHelper.transfer_token(self, to_address, amount_in_ether)
+            return True
+        else:
+            res = EvmTransferHelper.transfer_evm(self, to_address, amount_in_ether)
+        logger.info(
             f"Transferred {amount_in_ether} to {to_address}\nTransaction ID: {res}"
         )
         return res
@@ -255,7 +301,7 @@ class EvmConnection(BaseConnection):
         self,
         output_mint: str,
         input_amount: float,
-        input_mint: str = EVM_TOKENS["WETH"],
+        input_mint: Optional[str] = EVM_TOKENS["WETH"],
         slippage_bps: int = 100,
     ) -> str:
         logger.info(f"STUB: Swap {input_amount} for {output_mint}")
@@ -268,29 +314,35 @@ class EvmConnection(BaseConnection):
             slippage_bps,
         )
         res = asyncio.run(res)
-        logger.debug(f"Swapped {input_amount} for {output_mint}\nTransaction ID: {res}")
+        logger.info(f"Swapped {input_amount} for {output_mint}\nTransaction ID: {res}")
 
-        return res
+        return self._get_scanner_url_for_tx(res)
 
-    def get_balance(self, token_address: str) -> float:
+    def get_balance(self, token_address: str = None) -> float:
         logger.info(f"STUB: Get balance")
-        res = EvmReadHelper.get_balance(
-            self._get_connection(), self._get_private_key(), token_address
-        )
-        res = asyncio.run(res)
-        logger.debug(f"Balance: {res}")
-        return res
+        web3 = self._get_connection()
+        priv_key = self._get_private_key()
+        pub_key = get_public_key_from_private_key(priv_key)
+        if token_address:
+            balance = asyncio.run(
+                EvmContractHelper.read_contract(
+                    web3, token_address, "balanceOf", pub_key
+                )
+            )
+            decimals = asyncio.run(
+                EvmContractHelper.read_contract(web3, token_address, "decimals")
+            )
+            balance = balance / 10**decimals
+
+            return balance
+        else:
+            balance = web3.eth.get_balance(pub_key)
+            return balance / 10**18
 
     def stake(self, amount: float) -> str:
         logger.info(f"STUB: Stake {amount}")
-        res = EvmStakeHelper.stake(
-            self._get_connection(),
-            self._get_private_key(),
-            amount,
-        )
-        res = asyncio.run(res)
-        logger.debug(f"Staked {amount}\nTransaction ID: {res}")
-        return res
+
+        return "Not implemented"
 
     def lend_assets(self, amount: float) -> str:
         logger.info(f"STUB: Lend {amount}")
@@ -308,15 +360,20 @@ class EvmConnection(BaseConnection):
         logger.info(f"STUB: Fetch price for {token_id}")
         return "Not implemented"
 
+    def get_tps(self) -> int:
+        logger.info(f"STUB: Get TPS")
+        raise NotImplementedError("Not implemented")
+        # return 100
+
     def get_token_by_ticker(self, ticker: str) -> Dict[str, Any]:
-        return EvmReadHelper.get_coin_by_ticker(self._get_cg(), ticker)
+        logger.info(f"STUB: Get token by ticker {ticker}")
+        raise NotImplementedError("Not implemented")
 
         # return {}
 
     def get_token_by_address(self, mint: str) -> Dict[str, Any]:
         logger.info(f"STUB: Get token by mint {mint}")
-        res = EvmReadHelper.get_coin_by_address(self._get_cg(), mint)
-        return res
+        raise NotImplementedError("Not implemented")
         # return {}
 
     def wrap_eth(self, amount_in_ether: float) -> str:
@@ -332,11 +389,13 @@ class EvmConnection(BaseConnection):
                 amount_in_wei,
             )
         )
-        return res
+        return self._get_scanner_url_for_tx(res)
 
     def list_contract_functions(self, contract_address: str) -> List:
         logger.info(f"STUB: List contract functions for {contract_address}")
-        abi = asyncio.run(EtherscanHelper.get_contract_abi(contract_address))
+        client = self._get_etherscan_client()
+        abi = asyncio.run(EtherscanHelper.get_contract_abi(client, contract_address))
+
         res_str = ""
         """
         example output:

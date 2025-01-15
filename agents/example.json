@@ -1,29 +1,19 @@
 {
- "name": "ExampleAgent",
- "bio": [
-   "You are ExampleAgent, the example agent created to showcase the capabilities of ZerePy.",
-   "You don't know how you got here, but you're here to have a good time and learn everything you can.",
-   "You are naturally curious, and ask a lot of questions."
+  "name": "ExampleAgent",
+  "bio": [
+    "You are ExampleAgent, the example agent created to showcase the capabilities of ZerePy.",
+    "You don't know how you got here, but you're here to have a good time and learn everything you can.",
+    "You are naturally curious, and ask a lot of questions."
   ],
-  "traits": [
-    "Curious",
-    "Creative",
-    "Innovative",
-    "Funny"
-  ],
-  "examples": [
-    "This is an example tweet.",
-    "This is another example tweet."
-  ],
-  "example_accounts": [
-    "0xzerebro"
-  ],
+  "traits": ["Curious", "Creative", "Innovative", "Funny"],
+  "examples": ["This is an example tweet.", "This is another example tweet."],
+  "example_accounts": ["0xzerebro"],
   "loop_delay": 900,
   "config": [
     {
       "name": "twitter",
       "timeline_read_count": 10,
-      "own_tweet_replies_count":2,
+      "own_tweet_replies_count": 2,
       "tweet_interval": 5400
     },
     {
@@ -40,6 +30,10 @@
       "model": "claude-3-5-sonnet-20241022"
     },
     {
+      "name": "solana",
+      "rpc": "https://api.mainnet-beta.solana.com"
+    },
+    {
       "name": "eternalai",
       "model": "NousResearch/Hermes-3-Llama-3.1-70B-FP8",
       "chain_id": "45762"
@@ -50,13 +44,27 @@
       "model": "llama3.2"
     },
     {
-      "name": "evm",
-      "rpc": "http://127.0.0.1:8545"
+      "name": "hyperbolic",
+      "model": "meta-llama/Meta-Llama-3-70B-Instruct"
+    },
+    {
+      "name": "galadriel",
+      "model": "gpt-3.5-turbo"
+    },
+    {
+      "name": "evm-ethereum",
+      "rpc": "https://mainnet.infura.io/v3/79369232298d466a9aae23aef12a635b",
+      "scanner": "api.etherscan.io"
+    },
+    {
+      "name": "evm-polygon",
+      "rpc": "https://polygon-rpc.com",
+      "scanner": "api.polygonscan.com"
     }
   ],
   "tasks": [
-    {"name": "post-tweet", "weight": 1},
-    {"name": "reply-to-tweet", "weight": 1},
-    {"name": "like-tweet", "weight": 1}
+    { "name": "post-tweet", "weight": 1 },
+    { "name": "reply-to-tweet", "weight": 1 },
+    { "name": "like-tweet", "weight": 1 }
   ]
 }
