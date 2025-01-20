@@ -1,0 +1,38 @@
+[project]
+name = "zerepy-new"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "rux-eth",email = "maxrux@blorm.xyz"},
+    {name = "Ayoub Ed",email = "ayoub@blorm.xyz"},
+    {name = "Efrain",email = "ef@blorm.xyz"},
+    {name = "Max",email = "max@blorm.xyz"}
+]
+readme = "README.md"
+requires-python = ">=3.13,<4.0"
+
+[tool.poetry.dependencies]
+pynest-api = "^0.3.2"
+python-dotenv = "^1.0.1"
+web3 = "^6.20.3"
+solders = "^0.21.0,<0.24.0"
+solana = "^0.35.0"
+jupiter-python-sdk = "^0.0.2.0"
+colorlog = "^6.9.0"
+
+
+[tool.mypy]
+strict = true
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+follow_untyped_imports = false
+disallow_untyped_decorators = false
+disallow_subclassing_any = true
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
