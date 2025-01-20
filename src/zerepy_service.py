@@ -8,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 @Injectable
 class ZerePyService:
-
     def version(self) -> str:
         return "zerepy v0.2.0"
 

@@ -8,7 +8,7 @@ if __name__ == "__main__":
     from nest.core import Module
     from typing import Any, List
 
-    from src.zerepy_controller import ZerePyController
+    from src.controllers.zerepy_controller import ZerePyController
     from src.zerepy_service import ZerePyService
     from dotenv import load_dotenv
     import logging
