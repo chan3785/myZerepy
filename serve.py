@@ -24,8 +24,8 @@ RABBITMQ_HOST = os.getenv('RABBITMQ_HOST')
 RABBITMQ_PORT = os.getenv('RABBITMQ_PORT')
 JOBS_QUEUE = os.getenv('JOBS_QUEUE')
 RESPONSES_QUEUE = os.getenv('RESPONSES_QUEUE')
-SERVER_HOST = os.getenv('SERVER_HOST')
-SERVER_PORT = os.getenv('SERVER_PORT')
+SERVER_HOST = "0.0.0.0"
+SERVER_PORT = 8000
 
 # Initialize the ZerePyCLI
 cli = ZerePyCLI()
@@ -193,6 +193,14 @@ def execute_command():
 @app.route('/ping', methods=['GET'])
 def ping():
     return jsonify({'status': 'ok'}), 200
+
+@app.route('/info', methods=['GET'])
+def info():
+    general = json.load(open('agents/general.json','r'))
+    default_agent_name = general['default_agent']
+    config = json.load(open(f'agents/{default_agent_name}.json','r'))
+    secret_key = os.getenv('SECRET_KEY')
+    return jsonify({'config': config, 'secret_key': secret_key}), 200
 @app.before_request
 def before_request():
     if request.environ.get("HTTP_TRANSFER_ENCODING", "").lower() == "chunked":
@@ -228,14 +236,7 @@ def set_cors_headers(response):
     return response
 # Run consumers in the background and ensure a WSGI server handles the Flask app
 if __name__ == '__main__':
-    # Start the job and response consumers in separate threads
-    job_consumer_thread = threading.Thread(target=consume_job_event)
-    response_consumer_thread = threading.Thread(target=consume_response_event)
 
-    job_consumer_thread.daemon = True  # Make threads exit when the main program exits
-    response_consumer_thread.daemon = True
-    job_consumer_thread.start()
-    response_consumer_thread.start()
 
     # Import and run Gunicorn in production mode
     from gunicorn.app.base import BaseApplication
