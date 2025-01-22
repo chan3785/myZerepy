@@ -193,6 +193,14 @@ def execute_command():
 @app.route('/ping', methods=['GET'])
 def ping():
     return jsonify({'status': 'ok'}), 200
+
+@app.route('/info', methods=['GET'])
+def info():
+    general = json.load(open('agents/general.json','r'))
+    default_agent_name = general['default_agent']
+    config = json.load(open(f'agents/{default_agent_name}.json','r'))
+    secret_key = os.getenv('SECRET_KEY')
+    return jsonify({'config': config, 'secret_key': secret_key}), 200
 @app.before_request
 def before_request():
     if request.environ.get("HTTP_TRANSFER_ENCODING", "").lower() == "chunked":
