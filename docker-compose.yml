@@ -27,8 +27,16 @@ services:
       - RESPONSES_QUEUE=${RESPONSES_QUEUE}
       - SERVER_HOST=${SERVER_HOST}
       - SERVER_PORT=${SERVER_PORT}
+      - DSTACK_SIMULATOR_ENDPOINT=${DSTACK_SIMULATOR_ENDPOINT}
     ports:
-      - 80:80
+      - "3000:3000"
+    networks:
+      - zerepy-network
+  tappd:
+    image: phalanetwork/tappd-simulator:latest
+    container_name: tappd
+    ports:
+      - "8090:8090"
     networks:
       - zerepy-network
 
