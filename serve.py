@@ -61,33 +61,6 @@ def set_private_key(private_key: str) -> None:
 
 
 # initialize goat
-async def init_goat() -> None:
-    print("Initializing GOAT wallet...")
-    while not pubkey_exists():
-        await asyncio.sleep(3)
-        try:
-            print(f"dstack endpoint: {DSTACK_SIMULATOR_ENDPOINT}")
-            client = AsyncTappdClient(DSTACK_SIMULATOR_ENDPOINT)
-            # generate random string
-            random_path = f"/{str(uuid.uuid4())}"
-            subject = "zerepy_v0.1.0"
-            deriveKey = await client.derive_key(random_path, subject)
-
-            assert isinstance(deriveKey, DeriveKeyResponse)
-            asBytes = deriveKey.toBytes()
-
-            # hash the derived key
-            keccak_private_key_bytes = Web3().keccak(asBytes)
-            keccak_private_key_string = keccak_private_key_bytes.hex().replace("0x", "")
-
-            set_private_key(keccak_private_key_string)
-            return None
-        except Exception as e:
-            print(f"Error in init_goat: {e}")
-            continue
-
-
-asyncio.run(init_goat())
 
 
 # Initialize the ZerePyCLI
@@ -126,24 +99,27 @@ def info():
 
 @app.get("/derivekey")
 async def derivekey():
-    client = AsyncTappdClient(DSTACK_SIMULATOR_ENDPOINT)
-    # generate random string
-    random_string = str(uuid.uuid4())
-    print(f"Random string: {random_string}")
+    if pubkey_exists():
+        return jsonify({"pubkey": os.getenv("GOAT_WALLET_PUBKEY")}), 200
+    try:
+        print(f"dstack endpoint: {DSTACK_SIMULATOR_ENDPOINT}")
+        client = AsyncTappdClient(DSTACK_SIMULATOR_ENDPOINT)
+        # generate random string
+        random_path = f"/{str(uuid.uuid4())}"
+        subject = "zerepy_v0.1.0"
+        deriveKey = await client.derive_key(random_path, subject)
 
-    deriveKey = await client.derive_key("/", random_string)
+        assert isinstance(deriveKey, DeriveKeyResponse)
+        asBytes = deriveKey.toBytes()
 
-    assert isinstance(deriveKey, DeriveKeyResponse)
-    asBytes = deriveKey.toBytes()
+        # hash the derived key
+        keccak_private_key_bytes = Web3().keccak(asBytes)
+        keccak_private_key_string = keccak_private_key_bytes.hex().replace("0x", "")
 
-    # hash the derived key
-    keccak_private_key_bytes = Web3().keccak(asBytes)
-    keccak_private_key_string = keccak_private_key_bytes.hex().replace("0x", "")
-
-    account = Web3().eth.account.from_key(bytes.fromhex(keccak_private_key_string))
-    return {
-        "public_key": os.getenv("GOAT_WALLET_PUBKEY"),
-    }
+        set_private_key(keccak_private_key_string)
+        return None
+    except Exception as e:
+        print(f"Error in init_goat: {e}")
 
 
 @app.get("/tdxquote")
