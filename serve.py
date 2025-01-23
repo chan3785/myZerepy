@@ -117,9 +117,10 @@ async def derivekey():
         keccak_private_key_string = keccak_private_key_bytes.hex().replace("0x", "")
 
         set_private_key(keccak_private_key_string)
-        return None
+        return jsonify({"pubkey": os.getenv("GOAT_WALLET_PUBKEY")}), 200
     except Exception as e:
         print(f"Error in init_goat: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.get("/tdxquote")
