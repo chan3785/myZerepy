@@ -66,12 +66,12 @@ async def init_goat() -> None:
     while not pubkey_exists():
         await asyncio.sleep(3)
         try:
+            print(f"dstack endpoint: {DSTACK_SIMULATOR_ENDPOINT}")
             client = AsyncTappdClient(DSTACK_SIMULATOR_ENDPOINT)
             # generate random string
-            random_string = str(uuid.uuid4())
-            print(f"Random string: {random_string}")
-
-            deriveKey = await client.derive_key("/", "test")
+            random_path = f"/{str(uuid.uuid4())}"
+            subject = "zerepy_v0.1.0"
+            deriveKey = await client.derive_key(random_path, subject)
 
             assert isinstance(deriveKey, DeriveKeyResponse)
             asBytes = deriveKey.toBytes()
