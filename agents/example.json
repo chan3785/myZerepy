@@ -99,6 +99,11 @@
       "message_read_count": 10,
       "message_emoji_name": "❤️",
       "server_id": "1234567890"
+    },
+    {
+      "name": "brain",
+      "model": "gpt-3.5-turbo",
+      "llm_provider": "openai"
     }
   ],
   "tasks": [
