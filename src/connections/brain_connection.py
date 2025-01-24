@@ -1,4 +1,3 @@
-"""brain_connection.py"""
 import logging
 import json
 from typing import Dict, Any, Optional
