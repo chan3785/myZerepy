@@ -51,6 +51,9 @@ class AgentConfig(BaseModel):
 
         return connections
 
+    def get_connection(self, connection_name: str) -> Optional[Dict[str, Any]]:
+        return self.connections.model_dump().get(connection_name, None)
+
 
 def get_agents(path: Directory) -> Dict[str, AgentConfig]:
     # iterate over all files in the directory

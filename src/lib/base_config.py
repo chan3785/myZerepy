@@ -26,6 +26,8 @@ class BaseSettings(PydanticBaseSettings):
 class BaseConfig(PydanticBaseModel):
     version: str = "0.2.0"
     agents: Dict[str, AgentConfig] = {}
+    # we need to change this. this is just a dev helper
+    default_agent: Optional[str] = "ExampleAgent"
     base_settings: BaseSettings = BaseSettings()
 
     def __init__(self, **data: Any) -> None:
@@ -35,8 +37,20 @@ class BaseConfig(PydanticBaseModel):
     def get_agents(self) -> list[str]:
         return list(self.agents.keys())
 
+    def get_agent(self, agent_name: Optional[str] = None) -> AgentConfig:
+        agent_name = agent_name or self.default_agent
+        agent = self.agents.get(agent_name, None)
+        if not agent:
+            raise BaseConfigException(f"Agent {agent_name} not found")
+        return agent
+
     def is_agent_name(self, agent_name: str) -> bool:
         return agent_name in self.agents
+
+    def set_default_agent(self, agent_name: str) -> None:
+        if not self.is_agent_name(agent_name):
+            raise BaseConfigException(f"Agent {agent_name} not found")
+        self.default_agent = agent_name
 
 
 BASE_CONFIG = BaseConfig()
