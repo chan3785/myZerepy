@@ -11,22 +11,11 @@ class SwapDetails(BaseModel):
     input_mint: str = Field(description="Token symbol or mint address")
     output_mint: str = Field(description="Token symbol or mint address")
     amount: float
-    slippage_bps: int = Field(
-        default=100,
-        ge=0,
-        le=10000,
-        description="Slippage tolerance in basis points (0-10000)"
-    )
-    user_specified_slippage: bool = False
 
 class SendDetails(BaseModel):
     token_mint: str = Field(description="Token symbol or mint address")
     amount: float
     recipient: str
-    network: Optional[str] = Field(
-        default="ethereum",
-        description="Blockchain network for the transaction"
-    )
 
 class BrainResponse(BaseModel):
     note: str = Field(description="User-friendly response message")
@@ -60,8 +49,6 @@ Provide responses in this structure:
 
 Guidelines:
 - Default slippage is 1% (100 basis points)
-- Network defaults to ethereum if not specified
-- Token symbols will be resolved to addresses by our backend
 - Return action "none" with helpful advice for unsupported actions
 - Choose the connection from: ethereum, solana, sonic
 """

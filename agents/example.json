@@ -103,7 +103,7 @@
     {
       "name": "brain",
       "llm_provider": "openai",
-      "llm_model": "gpt-3.5-turbo"
+      "model": "gpt-3.5-turbo"
 
     }
   ],

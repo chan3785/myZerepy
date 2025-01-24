@@ -18,14 +18,34 @@ class BrainConnectionError(Exception):
 class BrainConnection(BaseConnection):
     def __init__(self, config: Dict[str, Any]):
         self.llm_provider = None
+        self.model = None
+        # Add network configs for each chain
+        self.eth_config = {"name": "ethereum", "rpc": "https://eth.blockrazor.xyz" }
+        self.solana_config = {"name": "solana", "rpc": "https://api.mainnet-beta.solana.com"}
+        self.sonic_config = {"name": "sonic", "network": "mainnet"}
+        
+        self.connections = {
+            "ethereum": EthereumConnection(self.eth_config),
+            "solana": SolanaConnection(self.solana_config), 
+            "sonic": SonicConnection(self.sonic_config)
+        }
         super().__init__(config)
+        self.load_configuration()
+
+    def load_configuration(self):
+        """Load configuration from persistent storage."""
+        self.model = self.config.get("model")
+        self.llm_provider = self.config.get("llm_provider")
+
+        if not self.model or not self.llm_provider:
+            raise ValueError("Configuration must include 'model' and 'llm_provider'")
 
     @property
     def is_llm_provider(self) -> bool:
         return False
 
     def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        required_fields = ["llm_provider", "llm_model"]
+        required_fields = ["llm_provider", "model"]
         missing = [f for f in required_fields if f not in config]
         if missing:
             raise ValueError(f"Missing required fields: {', '.join(missing)}")
@@ -68,13 +88,12 @@ class BrainConnection(BaseConnection):
         provider_map = {
             "openai": OpenAIConnection,
             "anthropic": AnthropicConnection,
-            "eternalai": EternalAIConnection,
-            # Add other providers as needed
+            # add others as desired
         }
         return provider_map.get(provider_name)
 
     def is_configured(self, verbose: bool = False) -> bool:
-        is_ready = self.llm_provider is not None and self.llm_model is not None
+        is_ready = self.llm_provider is not None and self.model is not None
         if verbose:
             if is_ready:
                 logger.info("Brain connection is fully configured")
@@ -87,7 +106,7 @@ class BrainConnection(BaseConnection):
             # Simulate a simple action to verify the connection
             response = self.llm_provider.perform_action(
                 "check-model",
-                kwargs={"model": self.llm_model}
+                kwargs={"model": self.model}
             )
             return response is not None
         except Exception as e:
@@ -96,64 +115,74 @@ class BrainConnection(BaseConnection):
 
     def _parse_intent(self, command: str, context: Optional[Dict] = None) -> BrainResponse:
         try:
+            logger.info(f"\nProcessing command: {command}")
+            
             response = self.llm_provider.perform_action(
                 "generate-text",
                 kwargs={
                     "prompt": command,
                     "system_prompt": SYSTEM_PROMPT,
-                    "model": self.config["llm_model"]
+                    "model": self.config["model"]
                 }
             )
             
-            # Parse and validate response using Pydantic
+            logger.info(f"\nRaw LLM response: {response}")
+            
+            # Parse and validate response 
             parsed = json.loads(response)
-            return BrainResponse(**parsed)
+            brain_response = BrainResponse(**parsed)
+            logger.info(f"\nParsed response: {brain_response.json(indent=2)}")
+            
+            return brain_response
 
         except Exception as e:
-            logger.error(f"Failed to parse intent: {e}")
+            logger.error(f"\nFailed to parse intent: {str(e)}")
             return BrainResponse(
                 note=f"Sorry, I couldn't understand that request: {str(e)}",
-                action="none"
+                action="none",
+                connection="none"
             )
 
-    def _execute_swap(self, details) -> Dict[str, Any]:
-        return self.goat_connection.perform_action(
-            "swap",
-            kwargs={
-                "token_in": details.input_mint,
-                "token_out": details.output_mint,
-                "amount": details.amount,
-                "slippage": details.slippage_bps / 10000  # Convert bps to decimal
-            }
-        )
 
-    def get_available_actions(self) -> Dict[str, Dict[str, Any]]:
-        """Get all available actions from GOAT plugins with their parameters"""
-        if not self.goat_connection:
-            raise BrainConnectionError("GOAT connection not configured")
+    # def _execute_swap(self, details) -> Dict[str, Any]:
+    #     return self.goat_connection.perform_action(
+    #         "swap",
+    #         kwargs={
+    #             "token_in": details.input_mint,
+    #             "token_out": details.output_mint,
+    #             "amount": details.amount,
+    #             "slippage": details.slippage_bps / 10000  # Convert bps to decimal
+    #         }
+    #     )
+
+    # def get_available_actions(self) -> Dict[str, Dict[str, Any]]:
+    #     """Get all available actions from GOAT plugins with their parameters"""
+    #     if not self.goat_connection:
+    #         raise BrainConnectionError("GOAT connection not configured")
             
-        actions = {}
-        for action_name, tool in self.goat_connection._action_registry.items():
-            actions[action_name] = {
-                "description": tool.description,
-                "parameters": tool.parameters.model_fields
-            }
-        return actions
+    #     actions = {}
+    #     for action_name, tool in self.goat_connection._action_registry.items():
+    #         actions[action_name] = {
+    #             "description": tool.description,
+    #             "parameters": tool.parameters.model_fields
+    #         }
+    #     return actions
 
-    def _execute_send(self, details) -> Dict[str, Any]:
-        return self.goat_connection.perform_action(
-            "transfer",
-            kwargs={
-                "to_address": details.recipient,
-                "amount": details.amount,
-                "token_address": details.token_mint,
-                "network": details.network
-            }
-        )
+    # def _execute_send(self, details) -> Dict[str, Any]:
+    #     return self.goat_connection.perform_action(
+    #         "transfer",
+    #         kwargs={
+    #             "to_address": details.recipient,
+    #             "amount": details.amount,
+    #             "token_address": details.token_mint,
+    #             "network": details.network
+    #         }
+    #     )
 
+    
     def process_command(self, command: str, context: Optional[Dict] = None) -> Dict[str, Any]:
         try:
-            # Parse intent using LLM
+            logger.info("\nStarting command processing")
             response = self._parse_intent(command, context)
             
             result = {
@@ -162,30 +191,57 @@ class BrainConnection(BaseConnection):
                 "action": response.action
             }
 
-            # Select the connection based on the LLM's response
-            connection = self.connection_manager.connections.get(response.connection)
+            # Get the appropriate connection
+            connection = self.connections.get(response.connection)
             if not connection:
-                raise BrainConnectionError(f"Connection {response.connection} not found")
+                error_msg = f"Connection {response.connection} not found"
+                logger.error(f"\n{error_msg}")
+                raise BrainConnectionError(error_msg)
 
-            # Execute action if needed
+            logger.info(f"\n🔗 Using connection: {response.connection}")
+
+            # Execute action
             if response.action == "swap" and response.swap_details:
-                execution = connection.perform_action("swap", response.swap_details.dict())
-                result.update(execution)
+                logger.info(f"\n💱 Executing swap: {response.swap_details.json(indent=2)}")
+                result.update(connection.swap(**response.swap_details.dict()))
             elif response.action == "send" and response.send_details:
-                execution = connection.perform_action("send", response.send_details.dict())
-                result.update(execution)
+                logger.info(f"\n📤 Executing transfer: {response.send_details.json(indent=2)}")
+                result.update(connection.transfer(**response.send_details.dict()))
 
+            logger.info(f"\nCommand processed successfully: {json.dumps(result, indent=2)}")
             return result
-
+            
         except Exception as e:
-            logger.error(f"Command processing failed: {e}")
+            error_msg = f"Command processing failed: {str(e)}"
+            logger.error(f"\n{error_msg}")
             return {
-                "success": False,
-                "message": f"Error processing command: {str(e)}",
+                "success": False, 
+                "message": error_msg,
                 "action": "none"
             }
 
     def perform_action(self, action_name: str, kwargs: Dict[str, Any]) -> Any:
+        if action_name == "process-command":
+            try:
+                command = kwargs.get("command")
+                context = kwargs.get("context")
+                if not command:
+                    raise ValueError("Command parameter is required")
+                    
+                logger.info(f"\nExecuting action: {action_name}")
+                logger.info(f"\nCommand: {command}")
+                logger.info(f"\nContext: {context}")
+                
+                result = self.process_command(command, context)
+                
+                logger.info(f"\nAction result: {json.dumps(result, indent=2)}")
+                return result
+                
+            except Exception as e:
+                logger.error(f"\nAction failed: {str(e)}", exc_info=True)
+                raise
+
+        # Rest of the method remains the same
         if action_name not in self.actions:
             raise KeyError(f"Unknown action: {action_name}")
 
