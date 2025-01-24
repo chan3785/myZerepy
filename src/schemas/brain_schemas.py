@@ -31,6 +31,7 @@ class SendDetails(BaseModel):
 class BrainResponse(BaseModel):
     note: str = Field(description="User-friendly response message")
     action: ActionType
+    connection: str
     swap_details: Optional[SwapDetails] = None
     send_details: Optional[SendDetails] = None
 
@@ -41,6 +42,7 @@ Provide responses in this structure:
 {
     "note": "user-friendly explanation",
     "action": "swap|send|none",
+    "connection": "ethereum|solana|sonic",  # Specify the connection to use
     "swap_details": {
         "input_mint": "token symbol/address",
         "output_mint": "token symbol/address", 
@@ -60,4 +62,6 @@ Guidelines:
 - Default slippage is 1% (100 basis points)
 - Network defaults to ethereum if not specified
 - Token symbols will be resolved to addresses by our backend
-- Return action "none" with helpful advice for unsupported actions"""
+- Return action "none" with helpful advice for unsupported actions
+- Choose the connection from: ethereum, solana, sonic
+"""

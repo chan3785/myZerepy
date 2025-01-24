@@ -3,6 +3,11 @@ import json
 from typing import Dict, Any, Optional
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
 from src.schemas.brain_schemas import BrainResponse, SYSTEM_PROMPT
+from src.connections.openai_connection import OpenAIConnection
+from src.connections.ethereum_connection import EthereumConnection
+from src.connections.solana_connection import SolanaConnection
+from src.connections.sonic_connection import SonicConnection
+from src.connections.anthropic_connection import AnthropicConnection
 
 logger = logging.getLogger("connections.brain_connection")
 
@@ -13,7 +18,6 @@ class BrainConnectionError(Exception):
 class BrainConnection(BaseConnection):
     def __init__(self, config: Dict[str, Any]):
         self.llm_provider = None
-        self.goat_connection = None
         super().__init__(config)
 
     @property
@@ -41,31 +45,54 @@ class BrainConnection(BaseConnection):
 
     def configure(self) -> bool:
         try:
-            # Get LLM provider
-            llm_name = self.config["llm_provider"]
-            llm_connections = [
-                conn for name, conn in self.connection_manager.connections.items()
-                if conn.is_llm_provider and name == llm_name
-            ]
-            if not llm_connections:
-                raise BrainConnectionError(f"LLM provider {llm_name} not found")
-            self.llm_provider = llm_connections[0]
-            
-            # Get GOAT connection
-            if "goat" not in self.connection_manager.connections:
-                raise BrainConnectionError("GOAT connection not found")
-            self.goat_connection = self.connection_manager.connections["goat"]
-            
+            # Validate LLM provider and model
+            self.validate_config(self.config)
+
+            # Instantiate the LLM provider based on the config
+            provider_class = self._get_provider_class(self.config["llm_provider"])
+            self.llm_provider = provider_class(self.config)
+
+            # Perform a simple action to check if the connection works
+            response = self._ping_llm_provider()
+            if not response:
+                raise BrainConnectionError("Failed to connect to LLM provider")
+
+            logger.info("Brain connection configured successfully! 🎉")
             return True
         except Exception as e:
             logger.error(f"Brain configuration failed: {e}")
             return False
 
+    def _get_provider_class(self, provider_name: str):
+        # Map provider names to their respective classes
+        provider_map = {
+            "openai": OpenAIConnection,
+            "anthropic": AnthropicConnection,
+            "eternalai": EternalAIConnection,
+            # Add other providers as needed
+        }
+        return provider_map.get(provider_name)
+
     def is_configured(self, verbose: bool = False) -> bool:
-        is_ready = self.llm_provider is not None and self.goat_connection is not None
-        if verbose and not is_ready:
-            logger.error("Brain connection not fully configured")
+        is_ready = self.llm_provider is not None and self.llm_model is not None
+        if verbose:
+            if is_ready:
+                logger.info("Brain connection is fully configured")
+            else:
+                logger.error("Brain connection not fully configured")
         return is_ready
+
+    def _ping_llm_provider(self) -> bool:
+        try:
+            # Simulate a simple action to verify the connection
+            response = self.llm_provider.perform_action(
+                "check-model",
+                kwargs={"model": self.llm_model}
+            )
+            return response is not None
+        except Exception as e:
+            logger.error(f"Ping to LLM provider failed: {e}")
+            return False
 
     def _parse_intent(self, command: str, context: Optional[Dict] = None) -> BrainResponse:
         try:
@@ -100,6 +127,19 @@ class BrainConnection(BaseConnection):
             }
         )
 
+    def get_available_actions(self) -> Dict[str, Dict[str, Any]]:
+        """Get all available actions from GOAT plugins with their parameters"""
+        if not self.goat_connection:
+            raise BrainConnectionError("GOAT connection not configured")
+            
+        actions = {}
+        for action_name, tool in self.goat_connection._action_registry.items():
+            actions[action_name] = {
+                "description": tool.description,
+                "parameters": tool.parameters.model_fields
+            }
+        return actions
+
     def _execute_send(self, details) -> Dict[str, Any]:
         return self.goat_connection.perform_action(
             "transfer",
@@ -122,12 +162,17 @@ class BrainConnection(BaseConnection):
                 "action": response.action
             }
 
+            # Select the connection based on the LLM's response
+            connection = self.connection_manager.connections.get(response.connection)
+            if not connection:
+                raise BrainConnectionError(f"Connection {response.connection} not found")
+
             # Execute action if needed
             if response.action == "swap" and response.swap_details:
-                execution = self._execute_swap(response.swap_details)
+                execution = connection.perform_action("swap", response.swap_details.dict())
                 result.update(execution)
             elif response.action == "send" and response.send_details:
-                execution = self._execute_send(response.send_details)
+                execution = connection.perform_action("send", response.send_details.dict())
                 result.update(execution)
 
             return result
