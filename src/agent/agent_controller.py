@@ -63,7 +63,7 @@ class AgentController:
                 value.append("sonic")
 
             for connection in value:
-                res_str = f"{res_str}\t\t - {connection}\n"
+                res_str = f"{res_str}\t\t - {connection}\n\t\t\t - python main.py {connection} --agent={key}\n"
         logging.info(res_str)
 
     # TODO: agent loop
