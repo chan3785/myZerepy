@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, List
 from nest.core import Injectable
 
 
@@ -23,3 +23,10 @@ class AgentService:
     def get_connections(self, agent_name: AgentName) -> list[str]:
         cfg = self.get_config(agent_name)
         return cfg.list_connections()
+
+    # lists all agents and their connections
+    def get_everything(self) -> dict[str, list[str]]:
+        everything = {}
+        for agent in self.get_agents():
+            everything[agent] = self.get_connections(agent)
+        return everything
