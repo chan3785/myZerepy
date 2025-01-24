@@ -13,7 +13,6 @@ from spl.token.constants import TOKEN_PROGRAM_ID
 from solana.rpc.commitment import Processed
 from solana.rpc.types import TxOpts
 
-from src.solana.solana_config import SolanaConfig
 from spl.token.instructions import (
     get_associated_token_address,
     transfer_checked,
@@ -30,7 +29,6 @@ from solders.system_program import TransferParams, transfer
 
 @Injectable
 class SolanaService:
-    solana_cfg: SolanaConfig
 
     ############### misc ###############
     def load_config(self, agent_name: str) -> None:

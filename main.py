@@ -28,7 +28,7 @@ if __name__ == "__main__":
     logger = logging.getLogger(__name__)
 
     # imports
-    IMPORTS = [AgentModule, SolanaModule]
+    IMPORTS = [AgentModule]
 
     # controllers
     CONTROLLERS = [ZerePyController]
