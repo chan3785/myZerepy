@@ -1,19 +1,19 @@
 from typing import Any, List
 from nest.core import Module
 
-from src.solana.controllers.cli_controller import SolanaCliController
+from src.twitter.controllers.cli_controller import TwitterCliController
 
-from .solana_service import SolanaService
+from .service import TwitterService
 
 
 # imports
 IMPORTS: List[Any] = []
 
 # controllers
-CONTROLLERS: List[Any] = [SolanaCliController]
+CONTROLLERS: List[Any] = [TwitterCliController]
 
 # providers
-PROVIDERS: List[Any] = [SolanaService]
+PROVIDERS: List[Any] = [TwitterService]
 
 # exports
 EXPORTS: List[Any] = []
@@ -25,5 +25,5 @@ EXPORTS: List[Any] = []
     providers=PROVIDERS,
     exports=EXPORTS,
 )
-class SolanaModule:
+class TwitterModule:
     pass

@@ -4,8 +4,8 @@ from nest.core import Injectable
 
 import logging
 
-from src.lib.agent_config import AgentConfig
-from src.lib.base_config import BASE_CONFIG, BaseConfig, AgentName
+from src.config.agent_config import AgentConfig
+from src.config.base_config import BASE_CONFIG, BaseConfig, AgentName
 
 logger = logging.getLogger(__name__)
 

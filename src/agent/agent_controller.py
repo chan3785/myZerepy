@@ -5,7 +5,7 @@ import click
 from nest.core.decorators.cli.cli_decorators import CliController, CliCommand
 from pydantic import TypeAdapter
 from .agent_service import AgentService
-from src.lib.base_config import AgentName
+from src.config.base_config import AgentName
 
 
 class AgentCommandArguments:
@@ -22,7 +22,7 @@ class AgentController:
         self.agent_service: AgentService = agent_service
 
     @CliCommand("get-config")
-    def config(self, agent: AgentCommandArguments.AGENT) -> None:
+    def config(self, agent: AgentCommandArguments.AGENT) -> None:  # type: ignore
         res = self.agent_service.get_config(agent)
         logging.info(f"Result: {res}")
 
@@ -32,7 +32,7 @@ class AgentController:
         logging.info(f"Result:\n{res}")
 
     @CliCommand("list-connections")
-    def list_connections(self, agent: AgentCommandArguments.AGENT) -> None:
+    def list_connections(self, agent: AgentCommandArguments.AGENT) -> None:  # type: ignore
         res = self.agent_service.get_connections(agent)
         logging.info(f"Result:\n{res}")
 
@@ -43,7 +43,7 @@ class AgentController:
         for key, value in res.items():
             res_str = f"{res_str}\nAgent name: {key}\n\tAvailable Connections:\n"
             for connection in value:
-                res_str = f"{res_str}\t\t - {connection}\n\t\t\t - python main.py {connection} --agent={key}\n"
+                res_str = f"{res_str}\t\t - {connection}\n\t\t\tCMD: python main.py {connection} --agent={key}\n"
         logging.info(res_str)
 
     # TODO: agent loop

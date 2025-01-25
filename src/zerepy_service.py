@@ -1,9 +1,8 @@
 from nest.core import Injectable
 
-import os
 import logging
 
-from src.lib.base_config import BASE_CONFIG
+from src.config.base_config import BASE_CONFIG
 
 
 logger = logging.getLogger(__name__)

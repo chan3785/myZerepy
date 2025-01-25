@@ -1,5 +1,4 @@
-from src.agent.agent_module import AgentModule
-from src.solana.solana_module import SolanaModule
+from src.solana import SolanaModule
 
 
 if __name__ == "__main__":
@@ -11,6 +10,7 @@ if __name__ == "__main__":
     from src.controllers.zerepy_controller import ZerePyController
     from src.zerepy_service import ZerePyService
     from dotenv import load_dotenv
+    from src.agent.agent_module import AgentModule
     import logging
     import os
 

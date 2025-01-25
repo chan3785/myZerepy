@@ -8,8 +8,8 @@ from pydantic_settings import BaseSettings
 from typing import Any, List, Dict, Optional
 
 from dotenv import load_dotenv
-import yaml
-from src.lib.types import Directory
+import yaml  # type: ignore
+from src.config.types import Directory
 
 from .connection_configs import ConnectionsConfig
 from .tasks import Tasks
@@ -19,8 +19,8 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-class AgentSettings(BaseSettings):
-    secret_key: int = Field(validation_alias="SECRET_KEY")
+# class AgentSettings(BaseSettings):
+# secret_key: int = Field(validation_alias="SECRET_KEY")
 
 
 class AgentConfig(BaseModel):
@@ -34,7 +34,7 @@ class AgentConfig(BaseModel):
     tasks: Tasks
     use_time_based_weights: bool
     time_based_multipliers: Dict[str, float]
-    agent_settings: AgentSettings = AgentSettings()
+    # agent_settings: AgentSettings = AgentSettings()
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
@@ -42,6 +42,7 @@ class AgentConfig(BaseModel):
         for key, value in self.connections.model_dump().items():
             if value is None or len(value) == 0:
                 self.connections.__dict__.pop(key)
+        print(self.connections.__dict__)
 
     def list_connections(self) -> List[str]:
         connections = []
@@ -51,8 +52,14 @@ class AgentConfig(BaseModel):
 
         return connections
 
-    def get_connection(self, connection_name: str) -> Optional[Dict[str, Any]]:
-        return self.connections.model_dump().get(connection_name, None)
+    def get_connection(self, connection_name: str) -> Any:
+        connections = self.connections.__dict__
+        connection = connections.get(connection_name)
+        if connection is None:
+            raise ValueError(
+                f"Connection {connection_name} not configured for agent {self.name}"
+            )
+        return connection
 
 
 def get_agents(path: Directory) -> Dict[str, AgentConfig]:
@@ -76,7 +83,7 @@ def get_agents(path: Directory) -> Dict[str, AgentConfig]:
             errors: list[ErrorDetails] = result.errors()
             for error in errors:
                 logger.warning(
-                    f'{error.get('msg')}. {error.get("type")} {".".join(error.get("loc"))}'
+                    f'{error.get("msg")}. {error.get("type")} {".".join(map(str, error.get("loc", [])))}'
                 )
     return agents
 
