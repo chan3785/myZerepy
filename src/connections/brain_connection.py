@@ -48,7 +48,7 @@ class BrainConnection(BaseConnection):
                 name="process-command",
                 parameters=[
                     ActionParameter("command", True, str, "Natural language command to process"),
-                    ActionParameter("context", False, dict, "Additional context for processing")
+                    ActionParameter("context", False, str, "Additional context for processing")
                 ],
                 description="Process natural language into blockchain action"
             )
@@ -103,18 +103,18 @@ class BrainConnection(BaseConnection):
             logger.error(f"Ping to LLM provider failed: {e}")
             return False
 
-    def _parse_intent(self, command: str, context: Optional[Dict] = None) -> BrainResponse:
+    def _parse_intent(self, command: str, context: Optional[str] = None) -> BrainResponse:
         try:
             response = self.llm_provider.perform_action(
                 "generate-text",
                 kwargs={
                     "prompt": command,
                     "system_prompt": INTENT_PROMPT,
-                    "model": self.config["model"]
+                    "model": self.model,
+                    "response_format": {"type": "json_object"}
                 }
             )
-            parsed = json.loads(response)
-            return BrainResponse(**parsed)
+            return BrainResponse.model_validate_json(response)
         except Exception as e:
             logger.error(f"Failed to parse intent: {e}")
             return BrainResponse(
@@ -122,30 +122,17 @@ class BrainConnection(BaseConnection):
                 action="none"
             )
 
+    def _validate_params(self, command: str, context: Optional[str] = None) -> BrainResponse:
+        return None
+
     def _get_goat_action_name(self, brain_action: str) -> Optional[str]:
         """Get corresponding GOAT action name with validation"""
-        # Get actual available actions from GOAT
+        # The action name in the schema now directly matches the GOAT action
         available_actions = set(self.goat_connection.actions.keys())
-        logger.debug(f"Available GOAT actions: {available_actions}")
-        logger.debug(f"Looking up brain action: {brain_action}")
-        logger.debug(f"Plugin methods found: {[method for method in dir(self.goat_connection) if not method.startswith('_')]}")
-
-        
-        # Define mapping based on actual plugin method names
-        action_mapping = {
-            "get_coin_price": "get_coin_price",     # CoinGeckoService method
-            "get_trending": "get_trending_coins",    # CoinGeckoService method
-            "search_coins": "search_coins",          # CoinGeckoService method
-            "token_balance": "get_token_balance",    # Erc20Service method
-            "token_transfer": "transfer",            # Erc20Service method  
-            "token_approve": "approve"               # Erc20Service method
-        }
-        
-        goat_action = action_mapping.get(brain_action)
-        if goat_action and goat_action in available_actions:
-            return goat_action
-        
-        logger.error(f"No matching GOAT action found for brain action: {brain_action}")
+        if brain_action in available_actions:
+            return brain_action
+            
+        logger.error(f"No matching GOAT action found: {brain_action}")
         logger.error(f"Available actions: {available_actions}")
         return None
 
@@ -165,7 +152,7 @@ class BrainConnection(BaseConnection):
                 "error": str(e)
             }
 
-    def process_command(self, command: str, context: Optional[Dict] = None) -> Dict[str, Any]:
+    def process_command(self, command: str, context: Optional[str] = None) -> Dict[str, Any]:
         try:
             # Parse intent using LLM
             response = self._parse_intent(command, context)

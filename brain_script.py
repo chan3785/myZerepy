@@ -29,7 +29,7 @@ def test_brain():
     commands = [
         "What's the price of Bitcoin?",
         "Show me trending coins",
-        "Get me the price of PEPE"
+        "Get me the price of 0x6982508145454ce325ddbe47a25d4ec3d2311933"
     ]
 
     for cmd in commands:
