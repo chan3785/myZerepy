@@ -20,11 +20,9 @@ if __name__ == "__main__":
     if log_level != "INFO":
         log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s - %(lineno)d"
     else:
-        log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        log_format = "%(message)s"
 
-    logging.basicConfig(
-        level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    logging.basicConfig(level=log_level, format=log_format)
     logger = logging.getLogger(__name__)
 
     # imports

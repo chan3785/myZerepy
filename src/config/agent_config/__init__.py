@@ -42,7 +42,6 @@ class AgentConfig(BaseModel):
         for key, value in self.connections.model_dump().items():
             if value is None or len(value) == 0:
                 self.connections.__dict__.pop(key)
-        print(self.connections.__dict__)
 
     def list_connections(self) -> List[str]:
         connections = []

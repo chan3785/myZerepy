@@ -165,9 +165,8 @@ class SolanaService:
 
     # get token data by address
     async def get_token_data_by_address(
-        self, cfg: SolanaConfig, address: str
+        self, cfg: SolanaConfig, address: Pubkey
     ) -> JupiterTokenData:
-
         try:
             response = requests.get(
                 "https://tokens.jup.ag/tokens?tags=verified",

@@ -5,6 +5,7 @@ from pydantic import TypeAdapter
 from solders.pubkey import Pubkey
 
 from src.config.agent_config.connection_configs.solana import SolanaConfig
+from src.types import JupiterTokenData
 from ..solana_service import SolanaService
 import logging
 from src.config.base_config import BASE_CONFIG, AgentName
@@ -38,6 +39,19 @@ class PriceOptions:
         required=True,
         type=str,
     )
+
+
+class TokenDataOptions:
+    TOKEN_ADDRESS_OR_TICKER = click.Argument(
+        ["token_address_or_ticker"],
+        required=True,
+        type=str,
+    )
+
+
+class TokenData:
+    address: str
+    symbol: str
 
 
 class SolanaCommandOptions:
@@ -138,6 +152,30 @@ class SolanaCliController:
         logger.info(tps)
 
     # async def get_token_data_by_ticker(
+    @CliCommand("get-token-data")
+    async def get_token_data(
+        self, token_address_or_ticker: TokenDataOptions.TOKEN_ADDRESS_OR_TICKER  # type: ignore
+    ) -> None:
+        cfg = list(BASE_CONFIG.get_configs_by_connection("solana").values())[0]
+        res = {}
+        try:
+            token_address = Pubkey.from_string(token_address_or_ticker)
+            token_data = await self.solana_service.get_token_data_by_address(
+                cfg, token_address
+            )
+            res = {
+                "address": token_address,
+                "symbol": token_data.symbol,
+            }
+        except:
+            ticker = token_address_or_ticker
+            data = await self.solana_service.get_token_data_by_ticker(cfg, ticker)
+            data["symbol"] = token_address_or_ticker
+            res = data
+        logger.info(
+            f"Token Data for {token_address_or_ticker}:\nAddress: {res['address']}\nSymbol: {res['symbol']}"
+        )
+
     # async def transfer(
     # async def trade(
     # async def stake(self, cfg: SolanaConfig, amount: float) -> str:
