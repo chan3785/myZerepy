@@ -3,6 +3,8 @@ from nest.core.decorators.cli.cli_decorators import CliCommand, CliController
 from pydantic import TypeAdapter
 
 from solders.pubkey import Pubkey
+
+from src.config.agent_config.connection_configs.solana import SolanaConfig
 from ..solana_service import SolanaService
 import logging
 from src.config.base_config import BASE_CONFIG, AgentName
@@ -93,7 +95,7 @@ class SolanaCliController:
                     )
                     res += f"{key}: {balance_res}\n"
             else:
-                cfg = BASE_CONFIG.get_default_agent().get_connection("solana")
+                cfg = list(BASE_CONFIG.get_configs_by_connection("solana").values())[0]
                 balance_res = await self.solana_service.get_balance(cfg, solana_address)
                 res += f"Balance for {solana_address}: {balance_res}\n"
         else:
@@ -128,24 +130,17 @@ class SolanaCliController:
         price = await self.solana_service.get_price(cfg, token_address)
         logger.info(price)
 
-    """  @CliCommand("get-token")
-    async def get_token(
-        self,
-        agent: SolanaCommandOptions.AGENT,  # type: ignore
-        token_address_or_ticker: SolanaCommandOptions.GetToken.TOKEN_ADDRESS_OR_TICKER,  # type: ignore
-    ) -> None:
-        logger.info(f"Getting token for {agent}")
-        if self._is_address(token_address_or_ticker):
-            token = await self.solana_service.get_token_data_by_address(
-                agent, token_address_or_ticker
-            )
+    # async def get_tps(self, cfg: SolanaConfig) -> float:
+    @CliCommand("tps")
+    async def tps(self) -> None:
+        cfg = list(BASE_CONFIG.get_configs_by_connection("solana").values())[0]
+        tps = await self.solana_service.get_tps(cfg)
+        logger.info(tps)
 
-            logger.info(token)
-        else:
-            token = await self.solana_service.get_token_data_by_ticker(
-                agent, token_address_or_ticker
-            )
- """
+    # async def get_token_data_by_ticker(
+    # async def transfer(
+    # async def trade(
+    # async def stake(self, cfg: SolanaConfig, amount: float) -> str:
 
     def _is_address(self, token_address_or_ticker: str) -> bool:
         try:
@@ -153,10 +148,3 @@ class SolanaCliController:
             return True
         except:
             return False
-
-    # get_tps
-    # get_token_data_by_ticker
-    # get_token_data_by_address
-    # transfer
-    # trade
-    # stake
