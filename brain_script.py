@@ -14,7 +14,7 @@ def test_brain():
             {
                 "name": "erc20",
                 "args": {
-                    "tokens": ["goat_plugins.erc20.token.PEPE"]
+                    "tokens": ["goat_plugins.erc20.token.PEPE", "goat_plugins.erc20.token.USDC"]
                 }
             }
         ]
@@ -29,7 +29,7 @@ def test_brain():
     commands = [
         "What's the price of Bitcoin?",
         "Show me trending coins",
-        "Get my PEPE balance"
+        "Get me the price of PEPE"
     ]
 
     for cmd in commands:

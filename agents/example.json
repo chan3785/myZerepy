@@ -63,7 +63,7 @@
         {
           "name": "coingecko",
           "args": {
-            "api_key": "YOUR_API_KEY"
+            "api_key": "CG-12BeZ64iSajBLPPz8mfX4uao"
           }
         },
         {
@@ -103,7 +103,21 @@
     {
       "name": "brain",
       "model": "gpt-3.5-turbo",
-      "llm_provider": "openai"
+      "llm_provider": "openai",
+      "plugins": [
+        {
+          "name": "coingecko",
+          "args": {
+            "api_key": "CG-12BeZ64iSajBLPPz8mfX4uao"
+          }
+        },
+        {
+          "name": "erc20",
+          "args": {
+            "tokens": ["goat_plugins.erc20.token.PEPE", "goat_plugins.erc20.token.USDC"]
+          }
+        }
+      ]
     }
   ],
   "tasks": [

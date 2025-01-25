@@ -2,7 +2,8 @@ import logging
 import json
 from typing import Dict, Any, Optional
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
-from src.schemas.brain_schemas import BrainResponse, SYSTEM_PROMPT
+from src.schemas.brain_schemas import BrainResponse
+from src.constants.brain_prompts import VALIDATION_PROMPT, INTENT_PROMPT
 from src.connections.openai_connection import OpenAIConnection
 from src.connections.goat_connection import GoatConnection
 
@@ -108,7 +109,7 @@ class BrainConnection(BaseConnection):
                 "generate-text",
                 kwargs={
                     "prompt": command,
-                    "system_prompt": SYSTEM_PROMPT,
+                    "system_prompt": INTENT_PROMPT,
                     "model": self.config["model"]
                 }
             )
