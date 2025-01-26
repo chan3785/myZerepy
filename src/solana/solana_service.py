@@ -193,7 +193,7 @@ class SolanaService:
         cfg: SolanaConfig,
         to_address: Pubkey,
         amount: float,
-        token_address: Pubkey | None,
+        token_address: Pubkey | None = None,
     ) -> str:
 
         try:
@@ -423,3 +423,23 @@ class SolanaService:
             await async_client.confirm_transaction(signature, commitment=Confirmed)
         except Exception as e:
             raise Exception(f"Failed to confirm transaction: {str(e)}") from e
+
+    async def _token_data(
+        self, cfg: SolanaConfig, token_address_or_ticker: str
+    ) -> dict[str, str]:
+        try:
+            token_address = Pubkey.from_string(token_address_or_ticker)
+            token_data = await self.get_token_data_by_address(cfg, token_address)
+            data = {
+                "address": token_data.address,
+                "symbol": token_data.symbol,
+            }
+            return data
+        except:
+            ticker = token_address_or_ticker
+            res = await self.get_token_data_by_ticker(cfg, ticker)
+            data = {
+                "address": res["address"],
+                "symbol": ticker,
+            }
+            return data

@@ -1,6 +1,6 @@
 import click
 from nest.core.decorators.cli.cli_decorators import CliCommand, CliController
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, PositiveFloat
 
 from solders.pubkey import Pubkey
 
@@ -52,6 +52,30 @@ class TokenDataOptions:
 class TokenData:
     address: str
     symbol: str
+
+
+class TransferOptions:
+    TO_ADDRESS = click.Argument(
+        ["to_address"],
+        required=True,
+        type=Pubkey.from_string,
+    )
+    AMOUNT = click.Argument(
+        ["amount"],
+        required=True,
+        type=TypeAdapter(PositiveFloat).validate_python,
+    )
+    AGENT = click.Option(
+        ["--agent", "-a"],
+        required=False,
+        type=TypeAdapter(AgentName).validate_python,
+    )
+    TOKEN_ADDRESS_OR_TICKER = click.Option(
+        ["--token", "-t"],
+        required=False,
+        type=str,
+        help="The token address or ticker to transfer",
+    )
 
 
 class SolanaCommandOptions:
@@ -156,27 +180,43 @@ class SolanaCliController:
     async def get_token_data(
         self, token_address_or_ticker: TokenDataOptions.TOKEN_ADDRESS_OR_TICKER  # type: ignore
     ) -> None:
-        cfg = list(BASE_CONFIG.get_configs_by_connection("solana").values())[0]
-        res = {}
-        try:
-            token_address = Pubkey.from_string(token_address_or_ticker)
-            token_data = await self.solana_service.get_token_data_by_address(
-                cfg, token_address
-            )
-            res = {
-                "address": token_address,
-                "symbol": token_data.symbol,
-            }
-        except:
-            ticker = token_address_or_ticker
-            data = await self.solana_service.get_token_data_by_ticker(cfg, ticker)
-            data["symbol"] = token_address_or_ticker
-            res = data
+        cfg = BASE_CONFIG.get_default_agent().get_connection("solana")
+        res = await self.solana_service._token_data(cfg, token_address_or_ticker)
+        logger.info(res)
         logger.info(
             f"Token Data for {token_address_or_ticker}:\nAddress: {res['address']}\nSymbol: {res['symbol']}"
         )
 
     # async def transfer(
+    # async def transfer(
+    # self,
+    # cfg: SolanaConfig,
+    # to_address: Pubkey,
+    # amount: float,
+    # token_address: Pubkey | None = None,
+    @CliCommand("transfer")
+    async def transfer(
+        self,
+        to_address: TransferOptions.TO_ADDRESS,  # type: ignore
+        amount: TransferOptions.AMOUNT,  # type: ignore
+        agent: TransferOptions.AGENT,  # type: ignore
+        token: TransferOptions.TOKEN_ADDRESS_OR_TICKER,  # type: ignore
+    ) -> None:
+        pass
+        logger.info(f"Transferring {amount} to {to_address}")
+        logger.info(f"Token: {token}")
+        if agent is None:
+            cfg = BASE_CONFIG.get_default_agent().get_connection("solana")
+        else:
+            cfg = BASE_CONFIG.get_agent(agent).get_connection("solana")
+        if token is not None:
+            res = await self.solana_service._token_data(cfg, token)
+            token_address = Pubkey.from_string(res["address"])
+        else:
+            token_address = None
+        res = await self.solana_service.transfer(cfg, to_address, amount, token_address)
+        logger.info(res)
+
     # async def trade(
     # async def stake(self, cfg: SolanaConfig, amount: float) -> str:
 
