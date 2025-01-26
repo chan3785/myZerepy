@@ -16,14 +16,19 @@ if __name__ == "__main__":
 
     load_dotenv()
 
-    log_level = os.getenv("LOG_LEVEL", "INFO")
-    if log_level != "INFO":
-        log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s - %(lineno)d"
-    else:
-        log_format = "%(message)s"
+    # log_level = os.getenv("LOG_LEVEL", "INFO")
+    log_level = logging.NOTSET
 
-    logging.basicConfig(level=log_level, format=log_format)
-    logger = logging.getLogger(__name__)
+    # if log_level != "INFO":
+    #    log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s - %(lineno)d"
+    # else:
+    #    log_format = "%(message)s"
+
+    logging.basicConfig()
+    logging.root.setLevel(log_level)
+    logging.basicConfig(level=log_level)
+
+    logger = logging.getLogger("my-app")
 
     # imports
     IMPORTS = [AgentModule, SolanaModule]

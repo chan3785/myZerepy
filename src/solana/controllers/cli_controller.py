@@ -1,3 +1,4 @@
+import json
 import click
 from nest.core.decorators.cli.cli_decorators import CliCommand, CliController
 from pydantic import TypeAdapter, PositiveFloat
@@ -13,6 +14,15 @@ from src.config.base_config import BASE_CONFIG, AgentName
 # how do i change the color of the font for the logger?
 
 logger = logging.getLogger(__name__)
+
+
+class GetConfigOptions:
+    AGENT = click.Option(
+        ["--agent", "-a"],
+        required=False,
+        type=TypeAdapter(AgentName).validate_python,
+        help="The agent to get the config for",
+    )
 
 
 class BalanceOptions:
@@ -49,11 +59,6 @@ class TokenDataOptions:
     )
 
 
-class TokenData:
-    address: str
-    symbol: str
-
-
 class TransferOptions:
     TO_ADDRESS = click.Argument(
         ["to_address"],
@@ -78,42 +83,23 @@ class TransferOptions:
     )
 
 
-class SolanaCommandOptions:
-    AGENT = click.Option(
-        ["-a", "--agent"],
-        required=False,
-        type=TypeAdapter(AgentName).validate_python,
-        default=BASE_CONFIG.default_agent,
-        help="The agent to use. Will use the default agent if not provided",
-    )
-
-    class Balance:
-        TOKEN_ADDRESS = click.Option(
-            ["--token-address"],
-            required=False,
-            type=str,
-            help="The token address to get the balance for",
-        )
-
-    class Price:
-        TOKEN_ADDRESS_OR_TICKER = click.Argument(
-            ["token_address_or_ticker"],
-            required=True,
-            type=str,
-        )
-
-    class GetToken:
-        TOKEN_ADDRESS_OR_TICKER = click.Argument(
-            ["token_address_or_ticker"],
-            required=True,
-            type=str,
-        )
-
-
 @CliController("solana")
 class SolanaCliController:
     def __init__(self, solana_service: SolanaService):
         self.solana_service = solana_service
+
+    @CliCommand("get-config")
+    async def get_config(self, agent: GetConfigOptions.AGENT) -> None:  # type: ignore
+        logger.info(f"Getting config for {agent}")
+        if agent is None:
+            cfgs = BASE_CONFIG.get_configs_by_connection("solana")
+            for key, value in cfgs.items():
+                cfg_dict = self.solana_service.get_cfg(value)
+                logger.info(f"Config for {key}: {json.dumps(cfg_dict, indent=4)}")
+        else:
+            cfg = BASE_CONFIG.get_agent(agent).get_connection("solana")
+            cfg_dict = self.solana_service.get_cfg(cfg)
+            logger.info(f"Config for {agent}: {json.dumps(cfg_dict, indent=4)}")
 
     @CliCommand("balance")
     async def balance(self, solana_address: BalanceOptions.SOLANA_ADDRESS, agent: BalanceOptions.AGENT, token_address: BalanceOptions.TOKEN_ADDRESS) -> None:  # type: ignore

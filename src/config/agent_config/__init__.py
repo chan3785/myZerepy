@@ -41,6 +41,7 @@ class AgentConfig(BaseModel):
         # filter out connections with empty values
         for key, value in self.connections.model_dump().items():
             if value is None or len(value) == 0:
+                print(f"Connection {key} not configured for agent {self.name}")
                 self.connections.__dict__.pop(key)
 
     def list_connections(self) -> List[str]:
@@ -79,11 +80,7 @@ def get_agents(path: Directory) -> Dict[str, AgentConfig]:
         if isinstance(result, AgentConfig):
             agents[result.name] = result
         else:
-            errors: list[ErrorDetails] = result.errors()
-            for error in errors:
-                logger.warning(
-                    f'{error.get("msg")}. {error.get("type")} {".".join(map(str, error.get("loc", [])))}'
-                )
+            continue
     return agents
 
 

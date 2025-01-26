@@ -37,6 +37,9 @@ logger = logging.getLogger(__name__)
 class SolanaService:
 
     ############### reads ###############
+    def get_cfg(self, cfg: SolanaConfig) -> dict[str, Any]:
+        return cfg.to_json()
+
     async def get_balance(
         self,
         cfg: SolanaConfig,

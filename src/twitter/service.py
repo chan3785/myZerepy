@@ -13,29 +13,17 @@ logger = logging.getLogger(__name__)
 
 @Injectable
 class TwitterService:
-    cfg: TwitterConfig
-
-    def handle(self, handler, **kwargs) -> Any:
-        agent = kwargs.get("agent")
-        if not agent or not BASE_CONFIG.is_agent_name(agent):
-            raise Exception(f'Invalid agent: "{agent}"')
-        self.cfg = self.get_cfg(agent)
-        return handler(**kwargs)
-
-    ############### misc ###############
-    @staticmethod
-    def get_cfg(agent: str) -> TwitterConfig:
-        return BASE_CONFIG.get_agent(agent).connections.twitter
 
     # get-latest-tweets
     # post-tweet
     # read-timeline
-    def read_timeline(self, count: int = None, **kwargs) -> list:
+    def read_timeline(self, cfg: TwitterConfig, count: int | None = None) -> list[Any]:
         """Read tweets from the user's timeline"""
-        count = self.cfg.timeline_read_count
+        if count is None:
+            count = cfg.timeline_read_count
 
         logger.debug(f"Reading timeline, count: {count}")
-        credentials = self.cfg.twitter_settings
+        credentials = cfg.twitter_settings
 
         params = {
             "tweet.fields": "created_at,author_id,attachments",
@@ -44,13 +32,13 @@ class TwitterService:
             "max_results": count,
         }
 
-        response = self._make_request(
+        response = cfg._make_request(
             "get",
-            f"users/{credentials['TWITTER_USER_ID']}/timelines/reverse_chronological",
+            f"users/{credentials.user_id}/timelines/reverse_chronological",
             params=params,
         )
 
-        tweets = response.get("data", [])
+        tweets: list[Any] = response.get("data", [])
         user_info = response.get("includes", {}).get("users", [])
 
         user_dict = {

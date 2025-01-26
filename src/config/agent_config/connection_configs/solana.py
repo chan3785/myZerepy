@@ -5,6 +5,8 @@ from src.config.types import Rpc, SolanaPrivateKey
 from solana.rpc.async_api import AsyncClient
 from solders.keypair import Keypair
 from jupiter_python_sdk.jupiter import Jupiter
+from pydantic_core import ErrorDetails
+from pydantic import ValidationError
 
 
 class SolanaSettings(BaseSettings):
@@ -24,6 +26,12 @@ class SolanaConfig(BaseModel):
             data["solana_settings"] = SolanaSettings()
             super().__init__(**data)
         except Exception as e:
+            if isinstance(e, ValidationError):
+                errors: list[ErrorDetails] = e.errors()
+                for error in errors:
+                    print(
+                        f'{error.get("msg")}. Invalid Field(s): {".".join(map(str, error.get("loc", [])))}'
+                    )
             return
 
     def get_client(self) -> AsyncClient:
@@ -49,3 +57,11 @@ class SolanaConfig(BaseModel):
 
     def format_txid_to_scanner_url(self, txid: str) -> str:
         return f"https://explorer.solana.com/tx/{txid}"
+
+    def to_json(self) -> dict[str, Any]:
+        # we need to manually serialize the keypair
+        wallet = str(self.get_wallet().pubkey())
+        return {
+            "rpc": self.rpc,
+            "solana_settings": {"public_key": wallet},
+        }

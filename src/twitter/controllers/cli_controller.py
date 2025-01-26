@@ -11,26 +11,11 @@ from src.config.base_config import BASE_CONFIG, AgentName
 logger = logging.getLogger(__name__)
 
 
-class TwitterCommandArguments:
-    AGENT = click.Argument(
-        ["agent"],
-        required=True,
-        type=TwitterService.get_cfg,
-    )
-
-
-class TwitterOptions:
-    INPUT_AMOUNT = click.Option(
-        ["-i", "--input-amount"],
-        help="Amount to input",
-        required=True,
-        type=float,
-    )
-    TOKEN_ADDRESS = click.Option(
-        ["-t", "--token-address"],
-        help="SPL token mint address (optional)",
+class GetConfigOptions:
+    AGENT = click.Option(
+        ["--agent", "-a"],
         required=False,
-        type=Pubkey.from_string,
+        type=AgentName,
     )
 
 
