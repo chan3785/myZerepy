@@ -61,6 +61,9 @@ class AgentConfig(BaseModel):
             )
         return connection
 
+    def to_json(self) -> dict[str, Any]:
+        return self.model_dump()
+
 
 def get_agents(path: Directory) -> Dict[str, AgentConfig]:
     # iterate over all files in the directory

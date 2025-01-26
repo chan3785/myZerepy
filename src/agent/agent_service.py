@@ -12,21 +12,19 @@ logger = logging.getLogger(__name__)
 
 @Injectable
 class AgentService:
-    cfg: BaseConfig = BASE_CONFIG
 
-    def get_config(self, agent_name: AgentName) -> AgentConfig:
-        return self.cfg.agents[agent_name]
+    def get_config(self, agent_name: str) -> dict[str, Any]:
+        return BASE_CONFIG.get_agent(agent_name).to_json()
 
     def get_agents(self) -> List[AgentName]:
-        return list(self.cfg.agents.keys())
+        return list(BASE_CONFIG.agents.keys())
 
-    def get_connections(self, agent_name: AgentName) -> list[str]:
-        cfg = self.get_config(agent_name)
-        return cfg.list_connections()
+    def get_connections(self, agent_name: str) -> list[str]:
+        return BASE_CONFIG.get_agent(agent_name).list_connections()
 
     # lists all agents and their connections
     def get_everything(self) -> dict[str, list[str]]:
         everything = {}
-        for agent in self.get_agents():
-            everything[agent] = self.get_connections(agent)
+        for agent in BASE_CONFIG.agents:
+            everything[agent] = BASE_CONFIG.agents[agent].list_connections()
         return everything

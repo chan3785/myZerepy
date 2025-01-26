@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
@@ -19,12 +20,18 @@ class SolanaSettings(BaseSettings):
 class SolanaConfig(BaseModel):
     rpc: Rpc
     solana_settings: SolanaSettings
+    logger: logging.Logger
+
+    class Config:
+        arbitrary_types_allowed = True
 
     def __init__(self, **data: Any) -> None:
         # if the connection is not configured, return none
         try:
+            data["logger"] = logging.getLogger(f"{self.__class__.__name__}")
             data["solana_settings"] = SolanaSettings()
             super().__init__(**data)
+
         except Exception as e:
             if isinstance(e, ValidationError):
                 errors: list[ErrorDetails] = e.errors()
@@ -35,13 +42,16 @@ class SolanaConfig(BaseModel):
             return
 
     def get_client(self) -> AsyncClient:
+        self.logger.debug("Creating AsyncClient instance")
         conn = AsyncClient(self.rpc)
         return conn
 
     def get_wallet(self) -> Keypair:
+        self.logger.debug("Creating Keypair instance")
         return self.solana_settings.private_key
 
     def get_jupiter(self) -> Jupiter:
+        self.logger.debug("Creating Jupiter instance")
         jupiter = Jupiter(
             async_client=self.get_client(),
             keypair=self.get_wallet(),
@@ -59,6 +69,7 @@ class SolanaConfig(BaseModel):
         return f"https://explorer.solana.com/tx/{txid}"
 
     def to_json(self) -> dict[str, Any]:
+        self.logger.debug("Serializing SolanaConfig")
         # we need to manually serialize the keypair
         wallet = str(self.get_wallet().pubkey())
         return {

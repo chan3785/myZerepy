@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
@@ -17,10 +18,15 @@ class AlloraSettings(BaseSettings):
 class AlloraConfig(BaseModel):
     chain: BlockchainNetwork
     allora_settings: AlloraSettings
+    logger: logging.Logger
+
+    class Config:
+        arbitrary_types_allowed = True
 
     def __init__(self, **data: Any) -> None:
         # if the connection is not configured, return none
         try:
+            data["logger"] = logging.getLogger(f"{self.__class__.__name__}")
             data["allora_settings"] = AlloraSettings()
             super().__init__(**data)
 

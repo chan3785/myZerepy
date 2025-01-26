@@ -51,13 +51,14 @@ class TwitterConfig(BaseModel):
     tweet_interval: PositiveInt = 5400
     twitter_settings: TwitterSettings
     _oauth_session: OAuth1Session = None
-    logger: logging.Logger = logging.getLogger(__name__)
+    logger: logging.Logger
 
     class Config:
         arbitrary_types_allowed = True
 
     def __init__(self, **data: Any) -> None:
         try:
+            data["logger"] = logging.getLogger(f"{self.__class__.__name__}")
             data["twitter_settings"] = TwitterSettings()
             super().__init__(**data)
         except Exception as e:
@@ -88,7 +89,7 @@ class TwitterConfig(BaseModel):
         return self._oauth_session
 
     def _make_request(
-        self, method: str, endpoint: str, params: dict[str, Any] | None = None
+        self, method: str, endpoint: str, **kwargs: Any
     ) -> dict[str, Any]:
         """
         Make a request to the Twitter API with error handling
@@ -106,7 +107,7 @@ class TwitterConfig(BaseModel):
             oauth = self._get_oauth()
             full_url = f"https://api.twitter.com/2/{endpoint.lstrip('/')}"
 
-            response = getattr(oauth, method.lower())(full_url, params)
+            response = getattr(oauth, method.lower())(full_url, **kwargs)
 
             if response.status_code not in [200, 201]:
                 self.logger.error(
