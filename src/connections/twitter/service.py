@@ -66,7 +66,7 @@ class TwitterService:
     ) -> list[Any]:
         """Get latest tweets for a user"""
         if username is None:
-            username = cfg.twitter_settings.user_id
+            username = cfg.twitter_settings.username
         if count is None:
             count = cfg.timeline_read_count
         logger.debug(f"Getting latest tweets for {username}, count: {count}")

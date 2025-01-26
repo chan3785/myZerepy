@@ -2,6 +2,9 @@ import logging
 from typing import Any
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
+from src.config.agent_config.connection_configs.base_connection import (
+    BaseConnectionConfig,
+)
 from src.config.types import Rpc, SolanaPrivateKey
 from solana.rpc.async_api import AsyncClient
 from solders.keypair import Keypair
@@ -17,7 +20,7 @@ class SolanaSettings(BaseSettings):
         super().__init__(**data)
 
 
-class SolanaConfig(BaseModel):
+class SolanaConfig(BaseConnectionConfig):
     rpc: Rpc
     solana_settings: SolanaSettings
     logger: logging.Logger
@@ -76,3 +79,7 @@ class SolanaConfig(BaseModel):
             "rpc": self.rpc,
             "solana_settings": {"public_key": wallet},
         }
+
+    @property
+    def is_llm_provider(self) -> bool:
+        return False

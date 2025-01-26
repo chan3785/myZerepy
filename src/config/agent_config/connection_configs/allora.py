@@ -2,6 +2,9 @@ import logging
 from typing import Any
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
+from src.config.agent_config.connection_configs.base_connection import (
+    BaseConnectionConfig,
+)
 from src.config.types import BlockchainNetwork
 from src.config.types import ApiKey
 from pydantic_core import ErrorDetails
@@ -15,7 +18,7 @@ class AlloraSettings(BaseSettings):
         super().__init__(**data)
 
 
-class AlloraConfig(BaseModel):
+class AlloraConfig(BaseConnectionConfig):
     chain: BlockchainNetwork
     allora_settings: AlloraSettings
     logger: logging.Logger
@@ -38,3 +41,7 @@ class AlloraConfig(BaseModel):
                         f'{error.get("msg")}. Invalid Field(s): {".".join(map(str, error.get("loc", [])))}'
                     )
             return
+
+    @property
+    def is_llm_provider(self) -> bool:
+        return False

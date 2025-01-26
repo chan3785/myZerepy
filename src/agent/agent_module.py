@@ -3,6 +3,7 @@ from nest.core import Module
 
 from src.agent.agent_controller import AgentController
 from src.agent.agent_service import AgentService
+from src.twitter.service import TwitterService
 
 # imports
 IMPORTS: List[Any] = []
@@ -11,7 +12,7 @@ IMPORTS: List[Any] = []
 CONTROLLERS: List[Any] = [AgentController]
 
 # providers
-PROVIDERS: List[Any] = [AgentService]
+PROVIDERS: List[Any] = [AgentService, TwitterService]
 
 # exports
 EXPORTS: List[Any] = []

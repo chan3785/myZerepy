@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PositiveFloat, PositiveInt
 from pydantic_core import ErrorDetails, ValidationError
 from pydantic_settings import BaseSettings
 from typing import Any, List, Dict, Optional
@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class AgentConfig(BaseModel):
+    # user set config
     name: str
     bio: List[str]
     traits: List[str]
@@ -36,6 +37,11 @@ class AgentConfig(BaseModel):
     time_based_multipliers: Dict[str, float]
     # agent_settings: AgentSettings = AgentSettings()
 
+    # system set config
+    model_provider: Optional[str] = None
+    username: Optional[str] = None
+    _system_prompt: Optional[str] = None
+
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
         # filter out connections with empty values
@@ -44,11 +50,17 @@ class AgentConfig(BaseModel):
                 print(f"Connection {key} not configured for agent {self.name}")
                 self.connections.__dict__.pop(key)
 
-    def list_connections(self) -> List[str]:
+    def list_connections(self, is_llm_provider: bool | None = None) -> List[str]:
         connections = []
         for key, value in self.connections.model_dump().items():
-            if value is not None:
-                connections.append(key)
+            if is_llm_provider is None:
+                if value is not None:
+                    connections.append(key)
+            else:
+                if value is not None and getattr(
+                    value, "is_llm_provider", lambda: is_llm_provider  # type: ignore
+                ):
+                    connections.append(key)
 
         return connections
 
@@ -61,8 +73,68 @@ class AgentConfig(BaseModel):
             )
         return connection
 
+    def prompt_llm(self, prompt: str, system_prompt: str = None) -> str:
+        """Generate text using the configured LLM provider"""
+        system_prompt = system_prompt or self._construct_system_prompt()
+
+        return self.connection_manager.perform_action(
+            connection_name=self.model_provider,
+            action_name="generate-text",
+            params=[prompt, system_prompt],
+        )
+
     def to_json(self) -> dict[str, Any]:
         return self.model_dump()
+
+    def _setup_llm_provider(self) -> None:
+        # Get first available LLM provider and its model
+        llm_providers = self.list_connections(is_llm_provider=False)
+        if not llm_providers:
+            raise ValueError("No configured LLM provider found")
+        self.model_provider = llm_providers[0]
+
+        # Load Twitter username for self-reply detection if Twitter tasks exist
+        if any("tweet" in task for task, weight in self.tasks.model_dump().items()):
+            load_dotenv()
+            self.username = os.getenv("TWITTER_USERNAME", "").lower()
+            if not self.username:
+                logger.warning(
+                    "Twitter username not found, some Twitter functionalities may be limited"
+                )
+
+    def _adjust_weights_for_time(
+        self, current_hour: PositiveFloat, task_weights: list[PositiveFloat]
+    ) -> list[PositiveFloat]:
+        weights = task_weights.copy()
+
+        # Reduce tweet frequency during night hours (1 AM - 5 AM)
+        if 1 <= current_hour <= 5:
+            weights = [
+                (
+                    weight
+                    * self.time_based_multipliers.get("tweet_night_multiplier", 0.4)
+                    if task == "post-tweet"
+                    else weight
+                )
+                for task, weight in self.tasks.model_dump().items()
+            ]
+
+        # Increase engagement frequency during day hours (8 AM - 8 PM) (peak hours?🤔)
+        if 8 <= current_hour <= 20:
+            weights = [
+                (
+                    weight
+                    * self.time_based_multipliers.get("engagement_day_multiplier", 1.5)
+                    if task in ("reply-to-tweet", "like-tweet")
+                    else weight
+                )
+                for task, weight in self.tasks.model_dump().items()
+            ]
+
+        return weights
+
+    def set_system_prompt(self, prompt: str) -> None:
+        self._system_prompt = prompt
 
 
 def get_agents(path: Directory) -> Dict[str, AgentConfig]:

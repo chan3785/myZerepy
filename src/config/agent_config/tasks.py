@@ -1,10 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, PositiveFloat
 
 
 class Task(BaseModel):
-    weight: int
-    min_interval: int
-    max_interval: int
+    weight: PositiveFloat
+    min_interval: PositiveFloat
+    max_interval: PositiveFloat
 
 
 class Tasks(BaseModel):

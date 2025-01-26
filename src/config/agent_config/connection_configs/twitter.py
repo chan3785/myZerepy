@@ -12,6 +12,9 @@ from requests_oauthlib import OAuth1Session
 
 from pydantic_settings import BaseSettings
 import logging
+from src.config.agent_config.connection_configs.base_connection import (
+    BaseConnectionConfig,
+)
 from src.config.types import ApiKey
 from pydantic import ValidationError
 
@@ -39,13 +42,14 @@ class TwitterSettings(BaseSettings):
     consumer_secret: ApiKey = Field(validation_alias="TWITTER_CONSUMER_SECRET")
     access_token: ApiKey = Field(validation_alias="TWITTER_ACCESS_TOKEN")
     access_token_secret: ApiKey = Field(validation_alias="TWITTER_ACCESS_TOKEN_SECRET")
+    username: str = Field(validation_alias="TWITTER_USERNAME")
     user_id: str = Field(validation_alias="TWITTER_USER_ID")
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
 
 
-class TwitterConfig(BaseModel):
+class TwitterConfig(BaseConnectionConfig):
     timeline_read_count: PositiveInt = 10
     own_tweet_replies_count: PositiveInt = 2
     tweet_interval: PositiveInt = 5400
@@ -155,3 +159,7 @@ class TwitterConfig(BaseModel):
             self.logger.error(error_msg)
             raise ValueError(error_msg)
         self.logger.debug(f"Tweet text validation passed for {context.lower()}")
+
+    @property
+    def is_llm_provider(self) -> bool:
+        return False
