@@ -28,8 +28,8 @@ def test_brain():
     # Test commands
     commands = [
         "What's the price of Bitcoin?",
-        "show me 10 trending tokens with minimal detail",
-        "Get me the price of 0x6982508145454ce325ddbe47a25d4ec3d2311933"
+        "send 0xFF6CBf6830C47F683aC3227baD83c0BE5397A08F .001 eth on mainnet",
+        "what is this wallet balance on eth network"
     ]
 
     for cmd in commands:

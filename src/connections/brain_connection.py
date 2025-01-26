@@ -3,7 +3,7 @@ import json
 from typing import Dict, Any, Optional
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
 from src.schemas.brain_schemas import BrainResponse
-from src.constants.brain_prompts import VALIDATION_PROMPT, INTENT_PROMPT
+from src.constants.brain_prompts import  INTENT_PROMPT
 from src.connections.openai_connection import OpenAIConnection
 from src.connections.goat_connection import GoatConnection
 
@@ -105,6 +105,7 @@ class BrainConnection(BaseConnection):
 
     def _parse_intent(self, command: str, context: Optional[str] = None) -> BrainResponse:
         try:
+            # Use OpenAI for intent parsing only
             response = self.llm_provider.perform_action(
                 "generate-text",
                 kwargs={
@@ -114,16 +115,26 @@ class BrainConnection(BaseConnection):
                     "response_format": {"type": "json_object"}
                 }
             )
-            return BrainResponse.model_validate_json(response)
+            
+            # Validate response against schema
+            parsed_response = BrainResponse.model_validate_json(response)
+            
+            # Validate action exists in GOAT
+            if parsed_response.action != "none":
+                if not self._validate_goat_action_name(parsed_response.action):
+                    return BrainResponse(
+                        note=f"Unsupported action: {parsed_response.action}",
+                        action="none"
+                    )
+            
+            return parsed_response
+
         except Exception as e:
-            logger.error(f"Failed to parse intent: {e}")
+            logger.error(f"Intent parsing failed: {e}")
             return BrainResponse(
                 note=f"Sorry, I couldn't understand that request: {str(e)}",
                 action="none"
             )
-
-    def _validate_params(self, command: str, context: Optional[str] = None) -> BrainResponse:
-        return None
 
     def _validate_goat_action_name(self, brain_action: str) -> Optional[str]:
         """Validatie corresponding GOAT action name"""
@@ -153,35 +164,25 @@ class BrainConnection(BaseConnection):
 
     def process_command(self, command: str, context: Optional[str] = None) -> Dict[str, Any]:
         try:
-            # Parse intent using LLM
             response = self._parse_intent(command, context)
-            logger.debug(f"Parsed intent: {response}")
             
-            if response.action == "none":
+            if response.action == "NONE":
                 return {
                     "success": True,
                     "message": response.note,
                     "action": "none"
                 }
-
-            # validate corresponding GOAT action
-            goat_action = self._validate_goat_action_name(response.action)
-            if not goat_action:
-                return {
-                    "success": False,
-                    "message": f"Unsupported action: {response.action}",
-                    "action": "none"
-                }
-
-            # Convert response details to dictionary if present
-            details = response.details.dict() if response.details else {}
-            
-            # Execute action and return result
-            result = self._execute_goat_action(goat_action, details)
+                
+            # Execute GOAT action for other cases
+            details = {}
+            if response.details:
+                details = response.details.dict()
+                
+            result = self._execute_goat_action(response.action, details)
             result["message"] = response.note
             result["action"] = response.action
             return result
-
+            
         except Exception as e:
             logger.error(f"Command processing failed: {e}")
             return {
