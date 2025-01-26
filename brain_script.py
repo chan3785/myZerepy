@@ -28,7 +28,7 @@ def test_brain():
     # Test commands
     commands = [
         "What's the price of Bitcoin?",
-        "Show me trending coins",
+        "show me 10 trending tokens with minimal detail",
         "Get me the price of 0x6982508145454ce325ddbe47a25d4ec3d2311933"
     ]
 

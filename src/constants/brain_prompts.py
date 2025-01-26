@@ -1,4 +1,8 @@
-VALIDATION_PROMPT = """AVAILABLE ACTIONS:
+VALIDATION_PROMPT = """
+Now it is time to parse the potential parameters for a function call and compare them to these actions and parameters. if it passes, produce the same exact 
+input as the output. if there is adjustment that can be made that is simple, please make it.
+
+AVAILABLE ACTIONS:
 - get_address: Get the address of the wallet
   Parameters:
 - get_chain: Get the chain of the wallet
@@ -11,13 +15,13 @@ VALIDATION_PROMPT = """AVAILABLE ACTIONS:
     - coin_id (required): The ID of the coin on CoinGecko (e.g., 'bitcoin', 'ethereum')
     - vs_currency (required): The target currency to get price in (e.g., 'usd', 'eur', 'jpy')
     - include_market_cap (required): Include market cap data in the response
-    - include_24hr_vol (required): Include 24 hour volume data in the response
+    - include_24hr_vol (required): Include 24 hour volume data in the response.
     - include_24hr_change (required): Include 24 hour price change data in the response
     - include_last_updated_at (required): Include last updated timestamp in the response
 - get_trending_coins: Get the list of trending coins from CoinGecko
   Parameters:
-    - limit (optional): The number of trending coins to return. Defaults to all coins.
-    - include_platform (optional): Include platform contract addresses (e.g., ETH, BSC) in response
+    - limit (optional): The number of trending coins to return
+    - include_platform (optional): Include platform contract addresses (e.g., ETH, BSC) in response. 
 - search_coins: Search for coins on CoinGecko
   Parameters:
     - query (required): The search query to find coins (e.g., 'bitcoin' or 'btc')
@@ -62,25 +66,40 @@ VALIDATION_PROMPT = """AVAILABLE ACTIONS:
     - to (required): The address to transfer the token to
     - amount (required): The amount of tokens to transfer in base units"""
 
+INTENT_PROMPT = """You are an AI assistant that interprets natural language commands for blockchain and cryptocurrency operations. Your role is to match user requests to available actions and provide structured responses.
 
-INTENT_PROMPT = """You are a blockchain data parser that converts natural language into structured actions for CoinGecko data and ERC-20 token operations.
+AVAILABLE ACTIONS:
+- get_address: Get wallet address
+- get_chain: Get current blockchain
+- get_balance: Get wallet balance
+- get_coin_price: Get cryptocurrency prices
+- get_trending_coins: Get trending cryptocurrencies
+- search_coins: Search for coins
+- approve: Approve ERC20 token spending
+- convert_from_base_unit: Convert from token base units
+- convert_to_base_unit: Convert to token base units
+- get_token_allowance: Check token allowance
+- get_token_balance: Get token balance
+- get_token_info_by_symbol: Get token info
+- get_token_total_supply: Get token supply
+- transfer: Transfer tokens
+- transfer_from: Transfer tokens from another address
 
-Provide responses in this structure:
+COMMON PHRASES AND MAPPINGS:
+- "trending", "popular", "hot" → get_trending_coins
+- "price of X", "how much is X" → get_coin_price
+- "search for X", "find X" → search_coins
+- "balance", "how many" → get_token_balance
+- "send", "transfer" → transfer
+- "approve", "allow" → approve
+
+Return response as a JSON object with:
 {
-    "note": "user-friendly explanation",
-    "action": "get_coin_price|get_trending|search_coins|token_balance|token_transfer|token_approve|none",
+    "note": "User-friendly explanation",
+    "action": "<action_name>",
     "details": {
-        // Action-specific parameters
+        // Action-specific parameters based on the schema
     }
 }
 
-Available actions:
-1. get_coin_price: Get cryptocurrency prices
-2. get_trending: Get trending coins
-3. search_coins: Search for coins
-4. token_balance: Get ERC-20 token balance
-5. token_transfer: Transfer ERC-20 tokens
-6. token_approve: Approve ERC-20 token spending
-
-Use 'none' action with helpful advice for unsupported operations."""
-
+For unsupported requests, use action: "none" and provide helpful guidance in the note."""

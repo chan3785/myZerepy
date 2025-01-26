@@ -125,9 +125,8 @@ class BrainConnection(BaseConnection):
     def _validate_params(self, command: str, context: Optional[str] = None) -> BrainResponse:
         return None
 
-    def _get_goat_action_name(self, brain_action: str) -> Optional[str]:
-        """Get corresponding GOAT action name with validation"""
-        # The action name in the schema now directly matches the GOAT action
+    def _validate_goat_action_name(self, brain_action: str) -> Optional[str]:
+        """Validatie corresponding GOAT action name"""
         available_actions = set(self.goat_connection.actions.keys())
         if brain_action in available_actions:
             return brain_action
@@ -165,8 +164,8 @@ class BrainConnection(BaseConnection):
                     "action": "none"
                 }
 
-            # Get corresponding GOAT action
-            goat_action = self._get_goat_action_name(response.action)
+            # validate corresponding GOAT action
+            goat_action = self._validate_goat_action_name(response.action)
             if not goat_action:
                 return {
                     "success": False,
