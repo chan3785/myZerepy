@@ -32,8 +32,8 @@ class CoinPriceDetails(BaseModel):
     include_last_updated_at: bool = Field(default=True)
 
 class TrendingCoinsDetails(BaseModel):
-    limit: Optional[int] = Field(None, description="Number of trending coins to return")
-    include_platform: Optional[bool] = Field(None, description="Include platform contract addresses")
+    limit: Optional[int] = Field(default=10, description="Number of trending coins to return")
+    include_platform: Optional[bool] = Field(default=False, description="Include platform contract addresses")
 
 class SearchCoinsDetails(BaseModel):
     query: str = Field(description="The search query to find coins")

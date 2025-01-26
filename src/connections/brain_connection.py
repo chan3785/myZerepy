@@ -6,8 +6,10 @@ from src.schemas.brain_schemas import BrainResponse
 from src.constants.brain_prompts import  INTENT_PROMPT
 from src.connections.openai_connection import OpenAIConnection
 from src.connections.goat_connection import GoatConnection
+from src.helpers.brain_helper import enhance_goat_params
 
 logger = logging.getLogger("connections.brain_connection")
+
 
 class BrainConnectionError(Exception):
     """Base exception for Brain connection errors"""
@@ -166,18 +168,19 @@ class BrainConnection(BaseConnection):
         try:
             response = self._parse_intent(command, context)
             
-            if response.action == "NONE":
+            if response.action == "none":
                 return {
                     "success": True,
                     "message": response.note,
                     "action": "none"
                 }
+            logger.info("response object: ")
+            logger.info(response)
+            if response.action in ["get_address", "get_balance", "transfer"]:
+                response = enhance_goat_params(response)
                 
-            # Execute GOAT action for other cases
-            details = {}
-            if response.details:
-                details = response.details.dict()
-                
+            # Execute GOAT action with enhanced parameters
+            details = response.details.dict() if response.details else {}
             result = self._execute_goat_action(response.action, details)
             result["message"] = response.note
             result["action"] = response.action

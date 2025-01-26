@@ -1,6 +1,9 @@
 from src.connections.brain_connection import BrainConnection
 from dotenv import load_dotenv
+import logging
 load_dotenv()
+
+# logging.basicConfig(level=logging.DEBUG)
 
 def test_brain():
     config = {
@@ -27,9 +30,10 @@ def test_brain():
 
     # Test commands
     commands = [
-        "What's the price of Bitcoin?",
-        "send 0xFF6CBf6830C47F683aC3227baD83c0BE5397A08F .001 eth on mainnet",
-        "what is this wallet balance on eth network"
+        "get me my wallet address",
+        "give me the top trending tokens right now",
+        "hi friend i was really hopping that you might be able to give me my wallet balance",
+        "send .0001 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE to 0xFF6CBf6830C47F683aC3227baD83c0BE5397A08F"
     ]
 
     for cmd in commands:
