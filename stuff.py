@@ -3,7 +3,7 @@ import logging
 import os
 
 import click
-from src.config.base_config import BaseConfig
+from src.config.zerepy_config import ZerepyConfig
 from dotenv import load_dotenv
 
 load_dotenv()

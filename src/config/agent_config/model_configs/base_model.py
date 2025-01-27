@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
+import logging
 from typing import Any
+from ...base_config import BaseConfig, BaseSettings
 
-from pydantic import BaseModel
+
+class BaseModelSettings(BaseSettings, ABC):
+    pass
 
 
-class BaseModelConfig(BaseModel, ABC):
+class BaseModelConfig(BaseConfig, ABC):
     model: str
-
-    def to_json(self) -> dict[str, Any]:
-        return self.model_dump()

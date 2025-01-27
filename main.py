@@ -1,20 +1,19 @@
-from src.solana import SolanaModule
+from dotenv import load_dotenv
 
+load_dotenv()
 
 if __name__ == "__main__":
     # from nest.core.pynest_factory import PyNestFactory
     from nest.core.cli_factory import CLIAppFactory
     from nest.core import Module
     from typing import Any, List
+    from src.connections.solana import SolanaModule
 
     from src.controllers.zerepy_controller import ZerePyController
     from src.zerepy_service import ZerePyService
-    from dotenv import load_dotenv
     from src.agent.agent_module import AgentModule
     import logging
     import os
-
-    load_dotenv()
 
     log_level = os.getenv("LOG_LEVEL", "INFO")
     if log_level != "INFO":

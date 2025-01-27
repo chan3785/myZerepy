@@ -6,14 +6,39 @@
     "You are naturally curious, and ask a lot of questions."
   ],
   "traits": ["Curious", "Creative", "Innovative", "Funny"],
-  "examples": ["This is an example tweet.", "This is another example tweet."],
-  "example_accounts": ["0xzerebro"],
-  "loop_delay": 900,
   "connections": {
     "twitter": {
       "timeline_read_count": 10,
       "own_tweet_replies_count": 2,
-      "tweet_interval": 5400
+      "tweet_interval": 5400,
+      "examples": [
+        "This is an example tweet.",
+        "This is another example tweet."
+      ],
+      "example_accounts": ["0xzerebro"],
+      "tasks": {
+        "post_tweet": {
+          "weight": 1,
+          "min_interval": "01:00:00",
+          "max_interval": "03:00:00",
+          "time_based_multipliers": {
+            "06:00:00-10:00:00": 1.5,
+            "10:00:00-15:00:00": 1.5,
+            "16:00:00-18:00:00": 1.5,
+            "19:00:00-20:00:00": 1.5
+          }
+        },
+        "reply_to_tweet": {
+          "weight": 1,
+          "min_interval": "01:00:00",
+          "max_interval": "03:00:00"
+        },
+        "like_tweet": {
+          "weight": 1,
+          "min_interval": "01:00:00",
+          "max_interval": "03:00:00"
+        }
+      }
     },
     "farcaster": { "timeline_read_count": 10, "cast_interval": 60 },
     "solana": {
@@ -52,27 +77,5 @@
       "model": "NousResearch/Hermes-3-Llama-3.1-70B-FP8",
       "chain_id": "45762"
     }
-  },
-  "tasks": {
-    "post_tweet": {
-      "weight": 1,
-      "min_interval": 1800,
-      "max_interval": 7200
-    },
-    "reply_to_tweet": {
-      "weight": 1,
-      "min_interval": 1800,
-      "max_interval": 7200
-    },
-    "like_tweet": {
-      "weight": 1,
-      "min_interval": 1800,
-      "max_interval": 7200
-    }
-  },
-  "use_time_based_weights": false,
-  "time_based_multipliers": {
-    "tweet_night_multiplier": 0.4,
-    "engagement_day_multiplier": 1.5
   }
 }

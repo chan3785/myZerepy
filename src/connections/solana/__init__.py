@@ -1,10 +1,8 @@
 from typing import Any, List
 from nest.core import Module
-
+from .solana_service import SolanaService
+from .controllers.cli_controller import SolanaCliController
 import logging
-
-from src.solana.controllers.cli_controller import SolanaCliController
-from src.solana.solana_service import SolanaService
 
 
 logger = logging.getLogger(__name__)

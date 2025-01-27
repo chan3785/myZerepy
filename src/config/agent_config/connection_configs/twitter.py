@@ -1,22 +1,16 @@
-from typing import Annotated, Any, Tuple, TypeAliasType
+from typing import Any, Tuple
 from pydantic import (
-    BaseModel,
     Field,
+    PositiveFloat,
     PositiveInt,
-    ValidationInfo,
-    ValidatorFunctionWrapHandler,
-    WrapValidator,
 )
-from pydantic_core import ErrorDetails
 from requests_oauthlib import OAuth1Session
 
 from pydantic_settings import BaseSettings
-import logging
 from src.config.agent_config.connection_configs.base_connection import (
     BaseConnectionConfig,
 )
 from src.config.types import ApiKey
-from pydantic import ValidationError
 
 
 class TwitterConnectionError(Exception):
@@ -53,26 +47,14 @@ class TwitterConfig(BaseConnectionConfig):
     timeline_read_count: PositiveInt = 10
     own_tweet_replies_count: PositiveInt = 2
     tweet_interval: PositiveInt = 5400
+    examples: list[str] = []
+    example_accounts: list[str] = []
     twitter_settings: TwitterSettings
     _oauth_session: OAuth1Session = None
-    logger: logging.Logger
-
-    class Config:
-        arbitrary_types_allowed = True
 
     def __init__(self, **data: Any) -> None:
-        try:
-            data["logger"] = logging.getLogger(f"{self.__class__.__name__}")
-            data["twitter_settings"] = TwitterSettings()
-            super().__init__(**data)
-        except Exception as e:
-            if isinstance(e, ValidationError):
-                errors: list[ErrorDetails] = e.errors()
-                for error in errors:
-                    print(
-                        f'{error.get("msg")}. Invalid Field(s): {".".join(map(str, error.get("loc", [])))}'
-                    )
-            return
+        data["twitter_settings"] = TwitterSettings()
+        super().__init__(**data)
 
     def _get_oauth(self) -> OAuth1Session:
         """Get or create OAuth session using stored credentials"""
@@ -159,7 +141,3 @@ class TwitterConfig(BaseConnectionConfig):
             self.logger.error(error_msg)
             raise ValueError(error_msg)
         self.logger.debug(f"Tweet text validation passed for {context.lower()}")
-
-    @property
-    def is_llm_provider(self) -> bool:
-        return False

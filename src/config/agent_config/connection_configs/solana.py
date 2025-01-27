@@ -1,7 +1,5 @@
-import logging
 from typing import Any
-from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings
+from pydantic import Field
 from src.config.agent_config.connection_configs.base_connection import (
     BaseConnectionConfig,
 )
@@ -9,40 +7,16 @@ from src.config.types import Rpc, SolanaPrivateKey
 from solana.rpc.async_api import AsyncClient
 from solders.keypair import Keypair
 from jupiter_python_sdk.jupiter import Jupiter
-from pydantic_core import ErrorDetails
-from pydantic import ValidationError
+from .base_connection import BaseConnectionConfig, BaseConnectionSettings
 
 
-class SolanaSettings(BaseSettings):
+class SolanaSettings(BaseConnectionSettings):
     private_key: SolanaPrivateKey = Field(validation_alias="SOLANA_PRIVATE_KEY")
-
-    def __init__(self, **data: Any) -> None:
-        super().__init__(**data)
 
 
 class SolanaConfig(BaseConnectionConfig):
     rpc: Rpc
-    solana_settings: SolanaSettings
-    logger: logging.Logger
-
-    class Config:
-        arbitrary_types_allowed = True
-
-    def __init__(self, **data: Any) -> None:
-        # if the connection is not configured, return none
-        try:
-            data["logger"] = logging.getLogger(f"{self.__class__.__name__}")
-            data["solana_settings"] = SolanaSettings()
-            super().__init__(**data)
-
-        except Exception as e:
-            if isinstance(e, ValidationError):
-                errors: list[ErrorDetails] = e.errors()
-                for error in errors:
-                    print(
-                        f'{error.get("msg")}. Invalid Field(s): {".".join(map(str, error.get("loc", [])))}'
-                    )
-            return
+    solana_settings: SolanaSettings = SolanaSettings()  # type: ignore
 
     def get_client(self) -> AsyncClient:
         self.logger.debug("Creating AsyncClient instance")
@@ -79,7 +53,3 @@ class SolanaConfig(BaseConnectionConfig):
             "rpc": self.rpc,
             "solana_settings": {"public_key": wallet},
         }
-
-    @property
-    def is_llm_provider(self) -> bool:
-        return False

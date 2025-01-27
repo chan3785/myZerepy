@@ -1,15 +1,16 @@
 from abc import ABC, abstractmethod
-from typing import Any
+import logging
+from typing import Any, Optional
+from datetime import datetime
+from src.config.agent_config.connection_configs.tasks import Task, TimeBasedMultiplier
+from ...base_config import BaseConfig, BaseSettings
+from pydantic import PositiveFloat
 
-from pydantic import BaseModel
+
+class BaseConnectionSettings(BaseSettings, ABC):
+    pass
 
 
-class BaseConnectionConfig(BaseModel, ABC):
-
-    @property
-    @abstractmethod
-    def is_llm_provider(self) -> bool:
-        pass
-
-    def to_json(self) -> dict[str, Any]:
-        return self.model_dump()
+class BaseConnectionConfig(BaseConfig, ABC):
+    tasks: dict[str, Task] = {}
+    pass

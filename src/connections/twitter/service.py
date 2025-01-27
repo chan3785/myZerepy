@@ -5,7 +5,7 @@ from nest.core import Injectable
 
 from src.config.agent_config import AgentConfig
 from src.config.agent_config.connection_configs.twitter import TwitterConfig
-from src.config.base_config import BASE_CONFIG
+from src.config.zerepy_config import ZEREPY_CONFIG
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,9 +14,6 @@ logger = logging.getLogger(__name__)
 @Injectable
 class TwitterService:
 
-    # get-latest-tweets
-    # post-tweet
-    # read-timeline
     def read_timeline(self, cfg: TwitterConfig, count: int | None = None) -> list[Any]:
         """Read tweets from the user's timeline"""
         if count is None:

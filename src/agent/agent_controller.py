@@ -5,7 +5,7 @@ import click
 from nest.core.decorators.cli.cli_decorators import CliController, CliCommand
 from pydantic import TypeAdapter
 from .agent_service import AgentService
-from src.config.base_config import AgentName
+from src.config.zerepy_config import AgentName
 
 
 class AgentCommandArguments:

@@ -9,7 +9,7 @@ from src.config.agent_config.connection_configs.solana import SolanaConfig
 from src.types import JupiterTokenData
 from ..solana_service import SolanaService
 import logging
-from src.config.base_config import BASE_CONFIG, AgentName
+from src.config.zerepy_config import ZEREPY_CONFIG, AgentName
 
 # how do i change the color of the font for the logger?
 
@@ -92,12 +92,12 @@ class SolanaCliController:
     async def get_config(self, agent: GetConfigOptions.AGENT) -> None:  # type: ignore
         logger.info(f"Getting config for {agent}")
         if agent is None:
-            cfgs = BASE_CONFIG.get_configs_by_connection("solana")
+            cfgs = ZEREPY_CONFIG.get_configs_by_connection("solana")
             for key, value in cfgs.items():
                 cfg_dict = self.solana_service.get_cfg(value)
                 logger.info(f"Config for {key}: {json.dumps(cfg_dict, indent=4)}")
         else:
-            cfg = BASE_CONFIG.get_agent(agent).get_connection("solana")
+            cfg = ZEREPY_CONFIG.get_agent(agent).get_connection("solana")
             cfg_dict = self.solana_service.get_cfg(cfg)
             logger.info(f"Config for {agent}: {json.dumps(cfg_dict, indent=4)}")
 
@@ -112,18 +112,20 @@ class SolanaCliController:
             res = f"Token Balance for {token_address}:\n"
         if agent is None:
             if solana_address is None:
-                cfgs = BASE_CONFIG.get_configs_by_connection("solana")
+                cfgs = ZEREPY_CONFIG.get_configs_by_connection("solana")
                 for key, value in cfgs.items():
                     balance_res = await self.solana_service.get_balance(
                         value, token_address
                     )
                     res += f"{key}: {balance_res}\n"
             else:
-                cfg = list(BASE_CONFIG.get_configs_by_connection("solana").values())[0]
+                cfg = list(ZEREPY_CONFIG.get_configs_by_connection("solana").values())[
+                    0
+                ]
                 balance_res = await self.solana_service.get_balance(cfg, solana_address)
                 res += f"Balance for {solana_address}: {balance_res}\n"
         else:
-            cfg = BASE_CONFIG.get_agent(agent).get_connection("solana")
+            cfg = ZEREPY_CONFIG.get_agent(agent).get_connection("solana")
             balance_res = await self.solana_service.get_balance(
                 cfg, solana_address, token_address
             )
@@ -140,7 +142,7 @@ class SolanaCliController:
         token_address_or_ticker: PriceOptions.TOKEN_ADDRESS_OR_TICKER,  # type: ignore
     ) -> None:
         logger.info(f"Getting price for {token_address_or_ticker}")
-        cfg = BASE_CONFIG.get_default_agent().get_connection("solana")
+        cfg = ZEREPY_CONFIG.get_default_agent().get_connection("solana")
         try:
             token_address = Pubkey.from_string(token_address_or_ticker)
         except:
@@ -157,7 +159,7 @@ class SolanaCliController:
     # async def get_tps(self, cfg: SolanaConfig) -> float:
     @CliCommand("tps")
     async def tps(self) -> None:
-        cfg = list(BASE_CONFIG.get_configs_by_connection("solana").values())[0]
+        cfg = list(ZEREPY_CONFIG.get_configs_by_connection("solana").values())[0]
         tps = await self.solana_service.get_tps(cfg)
         logger.info(tps)
 
@@ -166,7 +168,7 @@ class SolanaCliController:
     async def get_token_data(
         self, token_address_or_ticker: TokenDataOptions.TOKEN_ADDRESS_OR_TICKER  # type: ignore
     ) -> None:
-        cfg = BASE_CONFIG.get_default_agent().get_connection("solana")
+        cfg = ZEREPY_CONFIG.get_default_agent().get_connection("solana")
         res = await self.solana_service._token_data(cfg, token_address_or_ticker)
         logger.info(res)
         logger.info(
@@ -192,9 +194,9 @@ class SolanaCliController:
         logger.info(f"Transferring {amount} to {to_address}")
         logger.info(f"Token: {token}")
         if agent is None:
-            cfg = BASE_CONFIG.get_default_agent().get_connection("solana")
+            cfg = ZEREPY_CONFIG.get_default_agent().get_connection("solana")
         else:
-            cfg = BASE_CONFIG.get_agent(agent).get_connection("solana")
+            cfg = ZEREPY_CONFIG.get_agent(agent).get_connection("solana")
         if token is not None:
             res = await self.solana_service._token_data(cfg, token)
             token_address = Pubkey.from_string(res["address"])

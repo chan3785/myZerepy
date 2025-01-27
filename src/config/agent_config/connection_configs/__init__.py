@@ -1,12 +1,15 @@
-from pydantic import BaseModel
-
 from .twitter import TwitterConfig
 from .solana import SolanaConfig
 from .allora import AlloraConfig
 from typing import Optional
+from ...base_config import BaseConfig, BaseSettings
 
 
-class ConnectionsConfig(BaseModel):
-    twitter: Optional[TwitterConfig]
-    solana: Optional[SolanaConfig]
-    allora: Optional[AlloraConfig]
+class ConnectionsSettings(BaseSettings):
+    pass
+
+
+class ConnectionsConfig(BaseConfig):
+    twitter: Optional[TwitterConfig] = None
+    solana: Optional[SolanaConfig] = None
+    allora: Optional[AlloraConfig] = None

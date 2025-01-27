@@ -1,7 +1,7 @@
 import base64
 import json
 import math
-from typing import Any, Dict
+from typing import Any
 import aiohttp
 from nest.core import Injectable
 from solders.pubkey import Pubkey
@@ -25,7 +25,7 @@ from solders.message import MessageV0
 from solders.signature import Signature
 from src.config.agent_config import AgentConfig
 from src.config.agent_config.connection_configs.solana import SolanaConfig
-from src.config.base_config import BASE_CONFIG
+from src.config.zerepy_config import ZEREPY_CONFIG
 from src.types import JupiterTokenData
 from solders.system_program import TransferParams, transfer
 import logging

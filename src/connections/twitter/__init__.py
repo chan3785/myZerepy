@@ -1,7 +1,7 @@
 from typing import Any, List
 from nest.core import Module
-
-from src.twitter.controllers.cli_controller import TwitterCliController
+from .controllers.cli_controller import TwitterCliController
+from .service import TwitterService
 
 from .service import TwitterService
 
