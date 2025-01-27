@@ -1,6 +1,6 @@
 # ZerePy
 
-ZerePy is an open-source Python framework designed to let you deploy your own agents on X, powered by OpenAI/Anthropic/EternalAI LLMs.
+ZerePy is an open-source Python framework designed to let you deploy your own agents on X, powered by multiple LLMs.
 
 ZerePy is built from a modularized version of the Zerebro backend. With ZerePy, you can launch your own agent with
 similar core functionality as Zerebro. For creative outputs, you'll need to fine-tune your own model.
@@ -11,13 +11,22 @@ similar core functionality as Zerebro. For creative outputs, you'll need to fine
 
 - CLI interface for managing agents
 - Modular connection system
-- Blockchain integration with Solana
+- Blockchain integration
 
-### Social Platform Integrations
-
-- Twitter/X
-- Farcaster
-- Echochambers
+### Platform Integrations
+- Social Platforms:
+  - Twitter/X
+  - Farcaster
+  - Echochambers
+  - Discord
+- Blockchain Networks:
+  - Solana
+  - EVM Networks:
+    - Ethereum
+    - Sonic 
+- AI/ML Tools:
+  - GOAT (Onchain Agent Toolkit)
+  - Allora (Network inference)
 
 ### Language Model Support
 
@@ -27,6 +36,8 @@ similar core functionality as Zerebro. For creative outputs, you'll need to fine
 - Ollama
 - Hyperbolic
 - Galadriel
+- Allora
+- xAI (Grok)
 
 ## Quickstart
 
@@ -42,7 +53,7 @@ https://replit.com/@blormdev/ZerePy?v=1
 
 System:
 
-- Python 3.10 or higher (3.10 and 3.11 are best for beginner users)
+- Python 3.11 or higher
 - Poetry 1.5 or higher
 
 Environment Variables:
@@ -58,8 +69,9 @@ Environment Variables:
   - Farcaster: Warpcast recovery phrase
   - Echochambers: API key and endpoint
 - On-chain Integration:
-  - Solana: private key (in base58 format) for transactions
-  - RPC URL (defaults to public endpoints)
+  - Solana: private key
+  - Ethereum: private keys
+  - Sonic: private keys
 
 ## Installation
 
@@ -111,8 +123,16 @@ poetry run python main.py
    configure-connection anthropic  # For Anthropic
    configure-connection farcaster  # For Farcaster
    configure-connection eternalai  # For EternalAI
-   configure-connection galadriel  # For Galadriel
    configure-connection solana     # For Solana
+   configure-connection goat       # For Goat
+   configure-connection galadriel  # For Galadriel
+   configure-connection ethereum   # For Ethereum
+   configure-connection sonic      # For Sonic
+   configure-connection discord    # For Discord
+   configure-connection ollama     # For Ollama
+   configure-connection xai        # For Grok
+   configure-connection allora     # For Allora
+   configure-connection hyperbolic # For Hyperbolic
    ```
 
 2. Use `list-connections` to see all available connections and their status
@@ -128,39 +148,167 @@ poetry run python main.py
    start
    ```
 
+## GOAT Integration
+
+GOAT (Go Agent Tools) is a powerful plugin system that allows your agent to interact with various blockchain networks and protocols. Here's how to set it up:
+
+### Prerequisites
+
+1. An RPC provider URL (e.g., from Infura, Alchemy, or your own node)
+2. A wallet private key for signing transactions
+
+### Installation
+
+Install any of the additional [GOAT plugins](https://github.com/goat-sdk/goat/tree/main/python/src/plugins) you want to use:
+
+```bash
+poetry add goat-sdk-plugin-erc20         # For ERC20 token interactions
+poetry add goat-sdk-plugin-coingecko     # For price data
+```
+
+### Configuration
+
+1. Configure the GOAT connection using the CLI:
+
+   ```bash
+   configure-connection goat
+   ```
+
+   You'll be prompted to enter:
+
+   - RPC provider URL
+   - Wallet private key (will be stored securely in .env)
+
+2. Add GOAT plugins configuration to your agent's JSON file:
+
+   ```json
+   {
+     "name": "YourAgent",
+     "config": [
+       {
+         "name": "goat",
+         "plugins": [
+           {
+             "name": "erc20",
+             "args": {
+               "tokens": [
+                 "goat_plugins.erc20.token.PEPE",
+                 "goat_plugins.erc20.token.USDC"
+               ]
+             }
+           },
+           {
+             "name": "coingecko",
+             "args": {
+               "api_key": "YOUR_API_KEY"
+             }
+           }
+         ]
+       }
+     ]
+   }
+   ```
+
+Note that the order of plugins in the configuration doesn't matter, but each plugin must have a `name` and `args` field with the appropriate configuration options. You will have to check the documentation for each plugin to see what arguments are available.
+
+### Available Plugins
+
+Each [plugin](https://github.com/goat-sdk/goat/tree/main/python/src/plugins) provides specific functionality:
+
+- **1inch**: Interact with 1inch DEX aggregator for best swap rates
+- **allora**: Connect with Allora protocol
+- **coingecko**: Get real-time price data for cryptocurrencies using the CoinGecko API
+- **dexscreener**: Access DEX trading data and analytics
+- **erc20**: Interact with ERC20 tokens (transfer, approve, check balances)
+- **farcaster**: Interact with the Farcaster social protocol
+- **nansen**: Access Nansen's on-chain analytics
+- **opensea**: Interact with NFTs on OpenSea marketplace
+- **rugcheck**: Analyze token contracts for potential security risks
+- Many more to come...
+
+Note: While these plugins are available in the GOAT SDK, you'll need to install them separately using Poetry and configure them in your agent's JSON file. Each plugin may require its own API keys or additional setup.
+
+### Plugin Configuration
+
+Each plugin has its own configuration options that can be specified in the agent's JSON file:
+
+1. **ERC20 Plugin**:
+
+   ```json
+   {
+     "name": "erc20",
+     "args": {
+       "tokens": [
+         "goat_plugins.erc20.token.USDC",
+         "goat_plugins.erc20.token.PEPE",
+         "goat_plugins.erc20.token.DAI"
+       ]
+     }
+   }
+   ```
+
+2. **Coingecko Plugin**:
+   ```json
+   {
+     "name": "coingecko",
+     "args": {
+       "api_key": "YOUR_COINGECKO_API_KEY"
+     }
+   }
+   ```
+
 ## Platform Features
 
-### Solana
+### GOAT
+- Unified EVM chain interface
+- ERC20 token management (balances, transfers, approvals)
+- Real-time crypto data and market tracking
+- Plugin system for protocol integrations
+- Multi-chain support with secure wallet management
 
-- Transfer SOL and SPL tokens
-- Swap tokens using Jupiter
-- Check token balances
-- Stake SOL
-- Monitor network TPS
-- Query token information
-- Request testnet/devnet funds
+### Blockchain Networks
+- Solana
+  - SOL/SPL transfers and swaps via Jupiter
+  - Staking and balance management
+  - Network monitoring and token queries
 
-### Twitter/X
+- EVM Networks
+  - Ethereum
+    - ETH/ERC-20 transfers and swaps
+    - Kyberswap integration
+    - Balance and token queries
+  - Sonic
+    - Fast EVM transactions
+    - Custom slippage settings
+    - Token swaps via Sonic DEX
+    - Network switching (mainnet/testnet)
 
-- Post tweets from prompts
-- Read timeline with configurable count
-- Reply to tweets in timeline
-- Like tweets in timeline
+- EternalAI
+  - Transform agents to smart contracts
+  - Deploy on 10+ blockchains
+  - Onchain system prompts
+  - Decentralized inference
 
-### Farcaster
+### Social Platforms
+- Twitter/X
+  - Post and reply to tweets
+  - Timeline management
+  - Engagement features
 
-- Post casts
-- Reply to casts
-- Like and requote casts
-- Read timeline
-- Get cast replies
+- Farcaster
+  - Cast creation and interactions
+  - Timeline and reply management
+  - Like/requote functionality
 
-### Echochambers
+- Discord
+  - Channel management
+  - Message operations
+  - Reaction handling
 
-- Post new messages to rooms
-- Reply to messages based on room context
-- Read room history
-- Get room information and topics
+- Echochambers
+  - Room messaging and context
+  - History tracking
+  - Topic management
 
 ## Create your own agent
 
@@ -180,7 +328,7 @@ Create a new JSON file in the `agents` directory following this structure:
   ],
   "traits": ["Curious", "Creative", "Innovative", "Funny"],
   "examples": ["This is an example tweet.", "This is another example tweet."],
-  "example_accounts" : ["X_username_to_use_for_tweet_examples"]
+  "example_accounts" : ["X_username_to_use_for_tweet_examples"],
   "loop_delay": 900,
   "config": [
     {
@@ -223,6 +371,24 @@ Create a new JSON file in the `agents` directory following this structure:
     {
       "name": "galadriel",
       "model": "gpt-3.5-turbo"
+    },
+    {
+      "name": "discord",
+      "message_read_count": 10,
+      "message_emoji_name": "❤️",
+      "server_id": "1234567890"
+    },
+    {
+      "name": "sonic",
+      "network": "mainnet"
+    },
+    {
+      "name": "allora",
+      "chain_slug": "testnet"
+    },
+    {
+      "name": "ethereum",
+      "rpc": "https://eth.blockrazor.xyz"
     }
   ],
   "tasks": [
