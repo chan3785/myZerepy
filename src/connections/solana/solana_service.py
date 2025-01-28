@@ -37,37 +37,13 @@ logger = logging.getLogger(__name__)
 
 
 # TODO: put underscore in front of every method we dont wont allowed in loop
+# NOTE: all function parameters should be validated, NON NATIVE types. Any errors should be caught and re-raised with a more descriptive error message
 @Injectable
 class SolanaService:
-    threads: dict[str, threading.Thread] = {}
 
     ############### reads ###############
     def get_cfg(self, cfg: SolanaConfig) -> dict[str, Any]:
         return cfg.to_json()
-
-    def loop(self, cfg: SolanaConfig) -> dict[str, Any]:
-        def background_task(task: str, data: Any) -> None:
-            task_func = getattr(self, task)
-            while True:
-                res = asyncio.run(task_func(data))
-                logger.info(f"Task: {task} - Result: {res}")
-                print("Running in the background!")
-                time.sleep(5)  # Wait for 5 seconds
-
-        valid_tasks = cfg.validate_tasks(SolanaService)
-        task = list(valid_tasks.keys())[0]
-        thread = threading.Thread(
-            target=background_task,
-            args=(
-                task,
-                cfg,
-            ),
-        )
-        thread.daemon = True
-        thread.start()
-        self.threads[task] = thread
-        thread.join()
-        return {"status": "success", "message": "Looping", "thread": thread}
 
     async def get_balance(
         self,
@@ -77,7 +53,7 @@ class SolanaService:
     ) -> float:
         if not cfg:
             raise ValueError("Agent config not found.")
-        async_client = cfg.get_client()
+        async_client = cfg._get_client()
         payer = cfg.get_wallet()
         if solana_address is None:
             solana_address = payer.pubkey()
@@ -139,7 +115,7 @@ class SolanaService:
     # get tps
     async def get_tps(self, cfg: SolanaConfig) -> float:
 
-        async_client = cfg.get_client()
+        async_client = cfg._get_client()
         try:
             response = await async_client.get_recent_performance_samples(1)
 
@@ -236,7 +212,7 @@ class SolanaService:
         try:
             # Convert string address to Pubkey
             to_pubkey = to_address
-            async_client = cfg.get_client()
+            async_client = cfg._get_client()
             wallet = cfg.get_wallet()
             if token_address:
                 signature = await self._transfer_spl_tokens(
@@ -270,7 +246,7 @@ class SolanaService:
         slippage_bps: int,
     ) -> str:
 
-        async_client = cfg.get_client()
+        async_client = cfg._get_client()
         wallet = cfg.get_wallet()
         jupiter = cfg.get_jupiter()
         # convert wallet.secret() from bytes to string
@@ -315,7 +291,7 @@ class SolanaService:
     # stake
     async def stake(self, cfg: SolanaConfig, amount: float) -> str:
 
-        async_client = cfg.get_client()
+        async_client = cfg._get_client()
         wallet = cfg.get_wallet()
         jupiter = cfg.get_jupiter()
         try:
