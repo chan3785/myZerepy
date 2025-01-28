@@ -1,3 +1,4 @@
+import json
 from nest.core.decorators.cli.cli_decorators import CliCommand, CliController
 from src.zerepy_service import ZerePyService
 import logging

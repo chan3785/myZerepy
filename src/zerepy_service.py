@@ -1,15 +1,17 @@
+from typing import Any
 from nest.core import Injectable
 
-import os
 import logging
+
+from src.config.zerepy_config import ZEREPY_CONFIG
+
 
 logger = logging.getLogger(__name__)
 
 
 @Injectable
 class ZerePyService:
-    def version(self) -> str:
-        return "zerepy v0.2.0"
+    cfg = ZEREPY_CONFIG
 
-    def is_configured(self) -> bool:
-        return True
+    def version(self) -> str:
+        return f"ZerePy version: {self.cfg.version}"

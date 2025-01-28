@@ -1,10 +1,12 @@
+import asyncio
 import base64
 import json
 import math
-from typing import Any, Dict
+from typing import Any
 import aiohttp
+import threading, time
+
 from nest.core import Injectable
-import click
 from solders.pubkey import Pubkey
 from solana.rpc.commitment import Confirmed
 from src.constants import LAMPORTS_PER_SOL
@@ -12,57 +14,89 @@ from spl.token.async_client import AsyncToken
 from spl.token.constants import TOKEN_PROGRAM_ID
 from solana.rpc.commitment import Processed
 from solana.rpc.types import TxOpts
-
-from src.solana.solana_config import SolanaConfig
+from solana.rpc.async_api import AsyncClient
 from spl.token.instructions import (
     get_associated_token_address,
     transfer_checked,
     TransferCheckedParams,
 )
 import requests
+from solders.keypair import Keypair
 from solders.transaction import VersionedTransaction
 
 from solders.message import MessageV0
 from solders.signature import Signature
+from src.config.agent_config import AgentConfig
+from src.config.agent_config.connection_configs.solana import SolanaConfig
+from src.config.zerepy_config import ZEREPY_CONFIG
 from src.types import JupiterTokenData
 from solders.system_program import TransferParams, transfer
+import logging
+
+logger = logging.getLogger(__name__)
 
 
+# TODO: put underscore in front of every method we dont wont allowed in loop
 @Injectable
 class SolanaService:
-    solana_cfg: SolanaConfig
-
-    ############### misc ###############
-    def load_config(self, agent_name: str) -> None:
-        self.solana_cfg = SolanaConfig(agent_name)
-
-    def health(self, agent: str) -> str:
-        self.load_config(agent)
-        return f"Checking health of {agent}\nrpc: {self.solana_cfg.cfg}"
+    threads: dict[str, threading.Thread] = {}
 
     ############### reads ###############
+    def get_cfg(self, cfg: SolanaConfig) -> dict[str, Any]:
+        return cfg.to_json()
+
+    def loop(self, cfg: SolanaConfig) -> dict[str, Any]:
+        def background_task(task: str, data: Any) -> None:
+            task_func = getattr(self, task)
+            while True:
+                res = asyncio.run(task_func(data))
+                logger.info(f"Task: {task} - Result: {res}")
+                print("Running in the background!")
+                time.sleep(5)  # Wait for 5 seconds
+
+        valid_tasks = cfg.validate_tasks(SolanaService)
+        task = list(valid_tasks.keys())[0]
+        thread = threading.Thread(
+            target=background_task,
+            args=(
+                task,
+                cfg,
+            ),
+        )
+        thread.daemon = True
+        thread.start()
+        self.threads[task] = thread
+        thread.join()
+        return {"status": "success", "message": "Looping", "thread": thread}
+
     async def get_balance(
-        self, agent: str, token_address: Pubkey | None
-    ) -> Dict[str, Any]:
-        self.load_config(agent)
-        async_client = self.solana_cfg.client
-        wallet = self.solana_cfg.wallet
+        self,
+        cfg: SolanaConfig,
+        solana_address: Pubkey | None = None,
+        token_address: Pubkey | None = None,
+    ) -> float:
+        if not cfg:
+            raise ValueError("Agent config not found.")
+        async_client = cfg.get_client()
+        payer = cfg.get_wallet()
+        if solana_address is None:
+            solana_address = payer.pubkey()
         try:
             if not token_address:
                 response = await async_client.get_balance(
-                    wallet.pubkey(), commitment=Confirmed
+                    solana_address, commitment=Confirmed
                 )
                 val = response.value / LAMPORTS_PER_SOL
-                return {"balance": val}
+                return val
             spl_client = AsyncToken(
-                async_client, token_address, TOKEN_PROGRAM_ID, wallet
+                async_client, token_address, TOKEN_PROGRAM_ID, payer
             )
 
             mint = await spl_client.get_mint_info()
             if not mint.is_initialized:
                 raise ValueError("Token mint is not initialized.")
 
-            wallet_ata = get_associated_token_address(wallet.pubkey(), token_address)
+            wallet_ata = get_associated_token_address(solana_address, token_address)
             token_balance_resp = await async_client.get_token_account_balance(
                 wallet_ata
             )
@@ -72,21 +106,28 @@ class SolanaService:
             if ui_amt is None:
                 raise ValueError("Token balance is None.")
             else:
-                return {"balance": ui_amt}
+                logger.info(f"Token balance: {ui_amt}")
+                return ui_amt
 
         except Exception as error:
             raise Exception(f"Failed to get balance: {str(error)}") from error
 
+    def background_task(self) -> None:
+        print("Running in the background!")
+        time.sleep(5)
+
     # get price
-    async def get_price(self, agent: str, token_address: str) -> float:
-        self.load_config(agent)
-        url = f"https://api.jup.ag/price/v2?ids={token_address}"
+    async def get_price(self, cfg: SolanaConfig, token_address: Pubkey) -> float:
+        logger.debug(f"Getting price for {token_address}")
+        token: str = token_address.__str__()
+        url = f"https://api.jup.ag/price/v2?ids={token}"
 
         try:
             with requests.get(url) as response:
                 response.raise_for_status()
                 data = response.json()
-                price = data.get("data", {}).get(token_address, {}).get("price")
+                price = data.get("data", {}).get(token, {}).get("price")
+                logger.debug(f"Price data: {price}")
 
                 if not price:
                     raise Exception("Price data not available for the given token.")
@@ -96,21 +137,9 @@ class SolanaService:
             raise Exception(f"Price fetch failed: {str(e)}")
 
     # get tps
-    async def get_tps(self, agent: str) -> float:
-        self.load_config(agent)
-        """
-        Fetch the current Transactions Per Second (TPS) on the Solana network.
+    async def get_tps(self, cfg: SolanaConfig) -> float:
 
-        Args:
-            agent: An instance of SolanaAgent providing the RPC connection.
-
-        Returns:
-            Current TPS as a float.
-
-        Raises:
-            ValueError: If performance samples are unavailable or invalid.
-        """
-        async_client = self.solana_cfg.client
+        async_client = cfg.get_client()
         try:
             response = await async_client.get_recent_performance_samples(1)
 
@@ -138,8 +167,9 @@ class SolanaService:
             raise ValueError(f"Failed to fetch TPS: {str(error)}") from error
 
     # get token data by ticker
-    async def get_token_data_by_ticker(self, agent: str, ticker: str) -> dict[str, Any]:
-        self.load_config(agent)
+    async def get_token_data_by_ticker(
+        self, cfg: SolanaConfig, ticker: str
+    ) -> dict[str, Any]:
         try:
             response = requests.get(
                 f"https://api.dexscreener.com/latest/dex/search?q={ticker}"
@@ -158,23 +188,22 @@ class SolanaService:
             solana_pairs = [
                 pair
                 for pair in solana_pairs
-                if pair.get("baseToken", {}).get("symbol", "").lower() == ticker.lower()
+                if pair.get("baseToken", {}).get("symbol", "").lower().strip()
+                == ticker.lower().strip()
             ]
-
+            addy: str = solana_pairs[1].get("baseToken", {}).get("address", None)
+            if addy is None:
+                raise Exception("Token not found.")
             if solana_pairs:
-                return {"address": solana_pairs[0].get("baseToken", {}).get("address")}
-            else:
-                raise Exception("No pairs found for the given ticker.")
+                return {"address": addy}
+            raise Exception("Token not found.")
         except Exception as error:
-            raise Exception(
-                f"Failed to get token data by ticker: {str(error)}"
-            ) from error
+            raise error
 
     # get token data by address
     async def get_token_data_by_address(
-        self, agent: str, address: str
+        self, cfg: SolanaConfig, address: Pubkey
     ) -> JupiterTokenData:
-        self.load_config(agent)
         try:
             response = requests.get(
                 "https://tokens.jup.ag/tokens?tags=verified",
@@ -198,30 +227,35 @@ class SolanaService:
     # transfer
     async def transfer(
         self,
-        agent: str,
+        cfg: SolanaConfig,
         to_address: Pubkey,
         amount: float,
-        token_address: Pubkey | None,
+        token_address: Pubkey | None = None,
     ) -> str:
-        self.load_config(agent)
+
         try:
             # Convert string address to Pubkey
             to_pubkey = to_address
-
+            async_client = cfg.get_client()
+            wallet = cfg.get_wallet()
             if token_address:
                 signature = await self._transfer_spl_tokens(
+                    async_client,
+                    wallet,
                     to_pubkey,
                     token_address,  # Pass as string, convert inside function
                     amount,
                 )
                 token_identifier = str(token_address)
             else:
-                signature = await self._transfer_native_sol(to_address, amount)
+                signature = await self._transfer_native_sol(
+                    async_client, wallet, to_address, amount
+                )
                 token_identifier = "SOL"
 
-            await self._confirm_transaction(signature)
+            await self._confirm_transaction(async_client, signature)
 
-            return self.solana_cfg.format_txid_to_scanner_url(str(signature))
+            return cfg.format_txid_to_scanner_url(str(signature))
 
         except Exception as error:
             raise RuntimeError(f"Transfer operation failed: {error}") from error
@@ -229,16 +263,16 @@ class SolanaService:
     # trade
     async def trade(
         self,
-        agent: str,
+        cfg: SolanaConfig,
         output_token_address: Pubkey,
         input_amount: float,
         input_token_address: Pubkey,
         slippage_bps: int,
     ) -> str:
-        self.load_config(agent)
-        async_client = self.solana_cfg.client
-        wallet = self.solana_cfg.wallet
-        jupiter = self.solana_cfg.jupiter
+
+        async_client = cfg.get_client()
+        wallet = cfg.get_wallet()
+        jupiter = cfg.get_jupiter()
         # convert wallet.secret() from bytes to string
         input_mint = str(input_token_address)
         output_mint = str(output_token_address)
@@ -272,18 +306,18 @@ class SolanaService:
             )
             transaction_id = json.loads(result.to_json())["result"]
 
-            await self._confirm_transaction(signature)
-            return self.solana_cfg.format_txid_to_scanner_url(transaction_id)
+            await self._confirm_transaction(async_client, signature)
+            return cfg.format_txid_to_scanner_url(transaction_id)
 
         except Exception as e:
             raise Exception(f"Swap failed: {str(e)}")
 
     # stake
-    async def stake(self, agent: str, amount: float) -> str:
-        self.load_config(agent)
-        async_client = self.solana_cfg.client
-        wallet = self.solana_cfg.wallet
-        jupiter = self.solana_cfg.jupiter
+    async def stake(self, cfg: SolanaConfig, amount: float) -> str:
+
+        async_client = cfg.get_client()
+        wallet = cfg.get_wallet()
+        jupiter = cfg.get_jupiter()
         try:
 
             url = f"https://worker.jup.ag/blinks/swap/So11111111111111111111111111111111111111112/jupSoLaHXQiZZTSfEWMTRRgpnyFm8f6sZdosWBjx93v/{amount}"
@@ -311,7 +345,7 @@ class SolanaService:
             )
             transaction_id = json.loads(result.to_json())["result"]
 
-            return self.solana_cfg.format_txid_to_scanner_url(transaction_id)
+            return cfg.format_txid_to_scanner_url(transaction_id)
 
         except Exception as e:
             raise Exception(f"jupSOL staking failed: {str(e)}")
@@ -328,10 +362,12 @@ class SolanaService:
     # launch pump fun token
     # async def launch_pump_fun_token()
     async def _transfer_native_sol(
-        self, to_address: Pubkey, amount: float
+        self,
+        async_client: AsyncClient,
+        wallet: Keypair,
+        to_address: Pubkey,
+        amount: float,
     ) -> Signature:
-        async_client = self.solana_cfg.client
-        wallet = self.solana_cfg.wallet
         try:
             # Convert amount to lamports
             lamports = int(amount * LAMPORTS_PER_SOL)
@@ -360,10 +396,13 @@ class SolanaService:
             raise Exception(f"Native SOL transfer failed: {str(e)}")
 
     async def _transfer_spl_tokens(
-        self, to_address: Pubkey, spl_token: Pubkey, amount: float
+        self,
+        async_client: AsyncClient,
+        wallet: Keypair,
+        to_address: Pubkey,
+        spl_token: Pubkey,
+        amount: float,
     ) -> Signature:
-        async_client = self.solana_cfg.client
-        wallet = self.solana_cfg.wallet
         try:
             # Convert string token address to Pubkey
             token_mint = spl_token
@@ -414,10 +453,30 @@ class SolanaService:
         except Exception as e:
             raise Exception(f"SPL token transfer failed: {str(e)}")
 
-    async def _confirm_transaction(self, signature: Signature) -> None:
-        """Wait for transaction confirmation."""
-        async_client = self.solana_cfg.client
+    async def _confirm_transaction(
+        self, async_client: AsyncClient, signature: Signature
+    ) -> None:
         try:
             await async_client.confirm_transaction(signature, commitment=Confirmed)
         except Exception as e:
             raise Exception(f"Failed to confirm transaction: {str(e)}") from e
+
+    async def _token_data(
+        self, cfg: SolanaConfig, token_address_or_ticker: str
+    ) -> dict[str, str]:
+        try:
+            token_address = Pubkey.from_string(token_address_or_ticker)
+            token_data = await self.get_token_data_by_address(cfg, token_address)
+            data = {
+                "address": token_data.address,
+                "symbol": token_data.symbol,
+            }
+            return data
+        except:
+            ticker = token_address_or_ticker
+            res = await self.get_token_data_by_ticker(cfg, ticker)
+            data = {
+                "address": res["address"],
+                "symbol": ticker,
+            }
+            return data

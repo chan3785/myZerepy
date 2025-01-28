@@ -1,44 +1,33 @@
-import os
-from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, List
 from nest.core import Injectable
 
-from src.agent.agent_config import AgentConfig
 
 import logging
 
-from src.constants import CONNECTION_CONFIGS
-from src.lib.base_connection import BaseConnectionConfig
-from src.solana.solana_config import SolanaConfig
+from src.config.agent_config import AgentConfig
+from src.config.zerepy_config import ZEREPY_CONFIG, ZerepyConfig, AgentName
+from src.connections.twitter.service import TwitterService
 
 logger = logging.getLogger(__name__)
 
 
 @Injectable
 class AgentService:
-    loaded_agent: AgentConfig
+    def __init__(self, twitter_service: TwitterService):
+        self.twitter_service = twitter_service
 
-    def load_agent(self, agent_name: str) -> None:
-        self.loaded_agent = AgentConfig(agent_name)
+    def get_config(self, agent_name: str) -> dict[str, Any]:
+        return ZEREPY_CONFIG.get_agent(agent_name).to_json()
 
-    def get_config(self, agent_name: str) -> Dict[str, Any]:
-        self.load_agent(agent_name)
-        return self.loaded_agent.config_to_dict()
-
-    def list_agents(self) -> List[str]:
-        return [
-            config
-            for config in AgentConfig.configs()
-            if AgentConfig.is_valid_config(config)
-        ]
+    def get_agents(self) -> List[AgentName]:
+        return list(ZEREPY_CONFIG.agents.keys())
 
     def get_connections(self, agent_name: str) -> list[str]:
-        self.load_agent(agent_name)
-        connections: list[str] = []
-        for conn_cfg in CONNECTION_CONFIGS:
-            try:
-                conn_cfg(agent_name)
-                connections.append(conn_cfg.config_key())
-            except Exception as e:
-                pass
-        return connections
+        return ZEREPY_CONFIG.get_agent(agent_name).list_connections()
+
+    # lists all agents and their connections
+    def get_everything(self) -> dict[str, list[str]]:
+        everything = {}
+        for agent in ZEREPY_CONFIG.agents:
+            everything[agent] = ZEREPY_CONFIG.agents[agent].list_connections()
+        return everything
