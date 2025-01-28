@@ -7,13 +7,13 @@ if __name__ == "__main__":
     from nest.core.cli_factory import CLIAppFactory
     from nest.core import Module
     from typing import Any, List
-    from src.connections.solana import SolanaModule
 
     from src.controllers.zerepy_controller import ZerePyController
     from src.zerepy_service import ZerePyService
     from src.agent.agent_module import AgentModule
     import logging
     import os
+    from src.connections import ConnectionsModule
 
     log_level = os.getenv("LOG_LEVEL", "INFO")
     if log_level != "INFO":
@@ -25,7 +25,7 @@ if __name__ == "__main__":
     logger = logging.getLogger(__name__)
     logger.info("\nStarting ZerePy CLI")
     # imports
-    IMPORTS = [AgentModule, SolanaModule]
+    IMPORTS = [AgentModule, ConnectionsModule]
 
     # controllers
     CONTROLLERS = [ZerePyController]

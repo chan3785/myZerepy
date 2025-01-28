@@ -18,10 +18,6 @@ from .connection_configs import ConnectionsConfig
 from .model_configs import ModelsConfig
 from ..base_config import BaseConfig, BaseSettings
 
-load_dotenv()
-
-logger = logging.getLogger(__name__)
-
 
 # class AgentSettings(BaseSettings):
 # secret_key: int = Field(validation_alias="SECRET_KEY")
@@ -42,9 +38,6 @@ class AgentConfig(BaseConfig):
 
     username: Optional[str] = None
     _system_prompt: Optional[str] = None
-
-    def __init__(self, **data: Any) -> None:
-        super().__init__(**data)
 
     def set_default_model_provider(self, provider: str | None = None) -> None:
         def_provider: str

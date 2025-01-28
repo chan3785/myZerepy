@@ -25,9 +25,16 @@ class AgentService:
     def get_connections(self, agent_name: str) -> list[str]:
         return ZEREPY_CONFIG.get_agent(agent_name).list_connections()
 
+    def get_models(self, agent_name: str) -> list[str]:
+        return ZEREPY_CONFIG.get_agent(agent_name).list_models()
+
     # lists all agents and their connections
-    def get_everything(self) -> dict[str, list[str]]:
-        everything = {}
-        for agent in ZEREPY_CONFIG.agents:
-            everything[agent] = ZEREPY_CONFIG.agents[agent].list_connections()
+    def get_everything(self) -> dict[str, dict[str, list[str]]]:
+        everything: dict[str, dict[str, list[str]]] = {}
+        agents = ZEREPY_CONFIG.get_agents()
+        for a in agents:
+            agent = ZEREPY_CONFIG.get_agent(a)
+            connections = agent.list_connections()
+            models = agent.list_models()
+            everything[agent.name] = {"connections": connections, "models": models}
         return everything

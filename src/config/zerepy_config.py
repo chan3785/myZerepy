@@ -89,6 +89,13 @@ class ZerepyConfig(BaseConfig):
             raise ZerepyConfigException("No default agent set")
         return self.get_agent(self.default_agent)
 
+    def get_class_methods(self) -> list[str]:
+        return [
+            attr
+            for attr in dir(self)
+            if callable(getattr(self, attr)) and not attr.startswith("__")
+        ]
+
 
 ZEREPY_CONFIG = ZerepyConfig()
 

@@ -18,7 +18,7 @@ class SolanaConfig(BaseConnectionConfig):
     rpc: Rpc
     solana_settings: SolanaSettings = SolanaSettings()  # type: ignore
 
-    def get_client(self) -> AsyncClient:
+    def _get_client(self) -> AsyncClient:
         self.logger.debug("Creating AsyncClient instance")
         conn = AsyncClient(self.rpc)
         return conn
@@ -30,7 +30,7 @@ class SolanaConfig(BaseConnectionConfig):
     def get_jupiter(self) -> Jupiter:
         self.logger.debug("Creating Jupiter instance")
         jupiter = Jupiter(
-            async_client=self.get_client(),
+            async_client=self._get_client(),
             keypair=self.get_wallet(),
             quote_api_url="https://quote-api.jup.ag/v6/quote?",
             swap_api_url="https://quote-api.jup.ag/v6/swap",

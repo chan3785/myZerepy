@@ -10,3 +10,7 @@ class BaseModelSettings(BaseSettings, ABC):
 
 class BaseModelConfig(BaseConfig, ABC):
     model: str
+
+    @abstractmethod
+    def _get_client(self) -> Any:
+        pass

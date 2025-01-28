@@ -56,7 +56,7 @@ class TwitterConfig(BaseConnectionConfig):
         data["twitter_settings"] = TwitterSettings()
         super().__init__(**data)
 
-    def _get_oauth(self) -> OAuth1Session:
+    def _get_client(self) -> OAuth1Session:
         """Get or create OAuth session using stored credentials"""
         if self._oauth_session is None:
             self.logger.debug("Creating new OAuth session")
@@ -90,7 +90,7 @@ class TwitterConfig(BaseConnectionConfig):
         """
         self.logger.debug(f"Making {method.upper()} request to {endpoint}")
         try:
-            oauth = self._get_oauth()
+            oauth = self._get_client()
             full_url = f"https://api.twitter.com/2/{endpoint.lstrip('/')}"
 
             response = getattr(oauth, method.lower())(full_url, **kwargs)

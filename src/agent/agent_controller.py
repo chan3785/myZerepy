@@ -38,12 +38,15 @@ class AgentController:
 
     @CliCommand("list-all")
     def list_everything(self) -> None:
-        res: dict[str, list[str]] = self.agent_service.get_everything()
+        res: dict[str, dict[str, list[str]]] = self.agent_service.get_everything()
         res_str = "\nResult:"
         for key, value in res.items():
             res_str = f"{res_str}\nAgent name: {key}\n\tAvailable Connections:\n"
-            for connection in value:
-                res_str = f"{res_str}\t\t - {connection}\n\t\t\tCMD: python main.py {connection} --agent={key}\n"
+            for connection in value["connections"]:
+                res_str = f"{res_str}\t\t - {connection}\n\t\t\tCMD: python main.py {connection} --help\n"
+            res_str = f"{res_str}\tAvailable Models:\n"
+            for model in value["models"]:
+                res_str = f"{res_str}\t\t - {model}\n\t\t\tCMD: python main.py {model} --help\n"
         logging.info(res_str)
 
     # TODO: agent loop
