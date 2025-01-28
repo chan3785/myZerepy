@@ -25,12 +25,12 @@ class OpenAIAPIError(OpenAIConnectionError):
     pass
 
 
-class OpenAiSettings(BaseModelSettings):
+class OpenAISettings(BaseModelSettings):
     api_key: ApiKey = Field(validation_alias="OPENAI_API_KEY")
 
 
-class OpenAiConfig(BaseModelConfig):
-    openai_settings: OpenAiSettings = OpenAiSettings()  # type: ignore
+class OpenAIConfig(BaseModelConfig):
+    openai_settings: OpenAISettings = OpenAISettings()  # type: ignore
 
     def _get_client(self) -> OpenAI:
         """Get or create OpenAI client"""

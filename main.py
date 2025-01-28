@@ -14,6 +14,7 @@ if __name__ == "__main__":
     import logging
     import os
     from src.connections import ConnectionsModule
+    from src.llm_models import LlmModelsModule
 
     log_level = os.getenv("LOG_LEVEL", "INFO")
     if log_level != "INFO":
@@ -25,7 +26,7 @@ if __name__ == "__main__":
     logger = logging.getLogger(__name__)
     logger.info("\nStarting ZerePy CLI")
     # imports
-    IMPORTS = [AgentModule, ConnectionsModule]
+    IMPORTS = [AgentModule, ConnectionsModule, LlmModelsModule]
 
     # controllers
     CONTROLLERS = [ZerePyController]
