@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Annotated, Optional, Tuple, TypeAliasType
+from typing import Annotated, Any, Optional, Tuple, TypeAliasType
 from ...base_config import BaseConfig, BaseSettings
 from pydantic import (
     PositiveFloat,

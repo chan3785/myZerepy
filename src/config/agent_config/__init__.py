@@ -71,7 +71,7 @@ class AgentConfig(BaseConfig):
             if isinstance(value, dict) and len(value) > 0
         ]
 
-    def get_connection(self, connection_name: str) -> BaseConnectionConfig:
+    def get_connection(self, connection_name: str) -> Any:
         connections = self.connections.__dict__
         connection: BaseConnectionConfig | None = connections.get(connection_name)
         if connection is None:
@@ -80,7 +80,7 @@ class AgentConfig(BaseConfig):
             )
         return connection
 
-    def get_model(self, model_name: str) -> BaseModelConfig:
+    def get_model(self, model_name: str) -> Any:
         models = self.models.__dict__
         model: BaseModelConfig | None = models.get(model_name)
         if model is None:

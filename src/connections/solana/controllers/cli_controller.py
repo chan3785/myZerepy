@@ -16,6 +16,15 @@ from src.config.zerepy_config import ZEREPY_CONFIG, AgentName
 logger = logging.getLogger(__name__)
 
 
+class LoopOptions:
+    AGENT = click.Option(
+        ["--agent", "-a"],
+        required=True,
+        type=TypeAdapter(AgentName).validate_python,
+        help="The agent to loop",
+    )
+
+
 class GetConfigOptions:
     AGENT = click.Option(
         ["--agent", "-a"],
@@ -87,6 +96,12 @@ class TransferOptions:
 class SolanaCliController:
     def __init__(self, solana_service: SolanaService):
         self.solana_service = solana_service
+
+    @CliCommand("loop")
+    async def loop(self, agent: LoopOptions.AGENT) -> None:  # type: ignore
+        logger.info(f"Getting config for {agent}")
+        cfg = ZEREPY_CONFIG.get_agent(agent).get_connection("solana")
+        self.solana_service.loop(cfg)
 
     @CliCommand("get-config")
     async def get_config(self, agent: GetConfigOptions.AGENT) -> None:  # type: ignore

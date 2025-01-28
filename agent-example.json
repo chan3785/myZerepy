@@ -43,7 +43,19 @@
     "farcaster": { "timeline_read_count": 10, "cast_interval": 60 },
     "solana": {
       "rpc": "https://api.mainnet-beta.solana.com",
-      "stuff": "hello"
+      "tasks": {
+        "get_balance": {
+          "weight": 1,
+          "min_interval": "01:00:00",
+          "max_interval": "03:00:00",
+          "time_based_multipliers": {
+            "06:00:00-10:00:00": 1.5,
+            "10:00:00-15:00:00": 1.5,
+            "16:00:00-18:00:00": 1.5,
+            "19:00:00-20:00:00": 1.5
+          }
+        }
+      }
     },
 
     "goat": {

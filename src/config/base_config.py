@@ -17,6 +17,8 @@ class BaseSettings(PydanticBaseSettings, ABC):
                     print(
                         f'{error.get("msg")}. Invalid Field(s): {".".join(map(str, error.get("loc", [])))}'
                     )
+            else:
+                raise e
 
 
 class BaseConfig(PydanticBaseModel, ABC):
@@ -26,6 +28,7 @@ class BaseConfig(PydanticBaseModel, ABC):
         arbitrary_types_allowed = True
 
     def __init__(self, **data: Any) -> None:
+        stuff = self.list_class_methods()
         try:
             data["logger"] = logging.getLogger(f"{self.__class__.__name__}")
             super().__init__(**data)
@@ -37,4 +40,13 @@ class BaseConfig(PydanticBaseModel, ABC):
                         f'{error.get("msg")}. Invalid Field(s): {".".join(map(str, error.get("loc", [])))}'
                     )
             else:
-                print(f"Error: {str(e)}")
+                raise e
+
+    def list_class_methods(self, cls: object | None = None) -> list[str]:
+        if cls is None:
+            cls = self
+        return [
+            func
+            for func in dir(cls)
+            if callable(getattr(cls, func, None)) and not func.startswith("_")
+        ]

@@ -1,3 +1,4 @@
+from typing import Any
 from pydantic import Field
 from src.config.agent_config.connection_configs.base_connection import (
     BaseConnectionConfig,
@@ -12,4 +13,4 @@ class AlloraSettings(BaseConnectionSettings):
 
 class AlloraConfig(BaseConnectionConfig):
     chain: BlockchainNetwork
-    allora_settings: AlloraSettings = AlloraSettings()  # type: ignore
+    allora_settings: AlloraSettings

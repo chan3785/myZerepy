@@ -1,8 +1,11 @@
+import asyncio
 import base64
 import json
 import math
 from typing import Any
 import aiohttp
+import threading, time
+
 from nest.core import Injectable
 from solders.pubkey import Pubkey
 from solana.rpc.commitment import Confirmed
@@ -33,12 +36,38 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+# TODO: put underscore in front of every method we dont wont allowed in loop
 @Injectable
 class SolanaService:
+    threads: dict[str, threading.Thread] = {}
 
     ############### reads ###############
     def get_cfg(self, cfg: SolanaConfig) -> dict[str, Any]:
         return cfg.to_json()
+
+    def loop(self, cfg: SolanaConfig) -> dict[str, Any]:
+        def background_task(task: str, data: Any) -> None:
+            task_func = getattr(self, task)
+            while True:
+                res = asyncio.run(task_func(data))
+                logger.info(f"Task: {task} - Result: {res}")
+                print("Running in the background!")
+                time.sleep(5)  # Wait for 5 seconds
+
+        valid_tasks = cfg.validate_tasks(SolanaService)
+        task = list(valid_tasks.keys())[0]
+        thread = threading.Thread(
+            target=background_task,
+            args=(
+                task,
+                cfg,
+            ),
+        )
+        thread.daemon = True
+        thread.start()
+        self.threads[task] = thread
+        thread.join()
+        return {"status": "success", "message": "Looping", "thread": thread}
 
     async def get_balance(
         self,
@@ -77,10 +106,15 @@ class SolanaService:
             if ui_amt is None:
                 raise ValueError("Token balance is None.")
             else:
+                logger.info(f"Token balance: {ui_amt}")
                 return ui_amt
 
         except Exception as error:
             raise Exception(f"Failed to get balance: {str(error)}") from error
+
+    def background_task(self) -> None:
+        print("Running in the background!")
+        time.sleep(5)
 
     # get price
     async def get_price(self, cfg: SolanaConfig, token_address: Pubkey) -> float:
