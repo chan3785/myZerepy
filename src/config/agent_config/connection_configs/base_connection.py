@@ -9,6 +9,8 @@ from src.config.agent_config.connection_configs.tasks import Task, TimeBasedMult
 from ...base_config import BaseConfig, BaseSettings
 from pydantic import PositiveFloat, ValidationError
 
+CONNECTION_ERRORS: dict[str, list[ErrorDetails]] = {}
+
 
 class BaseConnectionSettings(BaseSettings, ABC):
     def __init__(self, **data: Any) -> None:
@@ -16,13 +18,9 @@ class BaseConnectionSettings(BaseSettings, ABC):
             super().__init__(**data)
         except Exception as e:
             if isinstance(e, ValidationError):
-                errors: list[ErrorDetails] = e.errors()
-                for error in errors:
-                    print(
-                        f'{error.get("msg")}. Invalid Field(s): {".".join(map(str, error.get("loc", [])))}'
-                    )
+                CONNECTION_ERRORS[self.__class__.__name__] = e.errors()
             elif isinstance(e, AttributeError):
-                print(f"WARNING: {e}")
+                pass
             else:
                 print(type(e))
 
@@ -35,13 +33,9 @@ class BaseConnectionConfig(BaseConfig, ABC):
             super().__init__(**data)
         except Exception as e:
             if isinstance(e, ValidationError):
-                errors: list[ErrorDetails] = e.errors()
-                for error in errors:
-                    print(
-                        f'{error.get("msg")}. Invalid Field(s): {".".join(map(str, error.get("loc", [])))}'
-                    )
+                CONNECTION_ERRORS[self.__class__.__name__] = e.errors()
             elif isinstance(e, AttributeError):
-                print(f"WARNING: {e}")
+                pass
             else:
                 print(type(e))
 

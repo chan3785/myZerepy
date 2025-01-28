@@ -57,6 +57,13 @@ class AgentConfig(BaseConfig):
             if isinstance(value, dict) and len(value) > 0
         ]
 
+    def invalid_connections(self) -> List[str]:
+        return [
+            key
+            for key, value in self.connections.model_dump().items()
+            if not isinstance(value, dict) or len(value) == 0
+        ]
+
     def list_models(self) -> List[str]:
         return [
             key
@@ -106,7 +113,7 @@ def get_agents(path: Directory) -> Dict[str, AgentConfig | ValidationError]:
         elif isinstance(result, ValidationError):
             agents[file] = result
         else:
-            raise ValueError(f"Invalid result type: {type(result)}")
+            raise result
     return agents
 
 

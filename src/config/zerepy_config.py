@@ -24,6 +24,7 @@ class ZerepyConfigException(Exception):
 class ZerepySettings(BaseSettings):
     agents_dir: Directory = Field(validation_alias="AGENTS_DIR")
     default_agent: Optional[str] = Field(validation_alias="DEFAULT_AGENT")
+    log_level: str = Field(validation_alias="LOG_LEVEL")
 
 
 class ZerepyConfig(BaseConfig):

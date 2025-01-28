@@ -6,6 +6,7 @@ from ..types.validators import api_key_validator
 from ..types.validators.path import directory_validator
 from ..types.validators.blockchain import (
     blockchain_network_validator,
+    ethereum_private_key_validator,
     solana_private_key_validator,
     rpc_validator,
 )
@@ -24,3 +25,7 @@ SolanaPrivateKey = TypeAliasType(
 Rpc = TypeAliasType("Rpc", Annotated[str, WrapValidator(rpc_validator)])
 
 ApiKey = TypeAliasType("ApiKey", Annotated[str, WrapValidator(api_key_validator)])
+
+EthereumPrivateKey = TypeAliasType(
+    "EthereumPrivateKey", Annotated[str, WrapValidator(ethereum_private_key_validator)]
+)

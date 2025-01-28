@@ -1,5 +1,6 @@
 from pydantic import ValidationInfo, ValidatorFunctionWrapHandler
 from solders.keypair import Keypair
+from eth_account import Account
 
 
 def rpc_validator(
@@ -29,4 +30,14 @@ def blockchain_network_validator(
     value = value.lower()
     if value not in networks:
         raise ValueError(f"Network {value} not in {networks}")
+    return value
+
+
+def ethereum_private_key_validator(
+    value: str, handler: ValidatorFunctionWrapHandler, _info: ValidationInfo
+) -> str:
+    try:
+        account = Account.from_key(value)
+    except Exception as e:
+        raise ValueError(f"Invalid private key: {e}")
     return value

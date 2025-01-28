@@ -36,21 +36,6 @@ class BaseConfig(PydanticBaseModel, ABC):
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
 
-    # def __init__(self, **data: Any) -> None:
-    # try:
-    #    super().__init__(**data)
-    # except Exception as e:
-    #    if isinstance(e, ValidationError):
-    #        errors: list[ErrorDetails] = e.errors()
-    #        for error in errors:
-    #            print(
-    #                f'{error.get("msg")}. Invalid Field(s): {".".join(map(str, error.get("loc", [])))}'
-    #            )
-    #    elif isinstance(e, AttributeError):
-    #        self.logger.warning(f"WARNING: {e}")
-    #    else:
-    #        print(type(e))
-
     def list_class_methods(self, cls: object | None = None) -> list[str]:
         if cls is None:
             cls = self
