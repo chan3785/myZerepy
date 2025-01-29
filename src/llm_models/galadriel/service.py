@@ -5,6 +5,7 @@ import logging
 
 from ...config.zerepy_config import ZEREPY_CONFIG
 from ...config.agent_config.model_configs.galadriel import GaladrielConfig
+from ...connections.galadriel_connection import GaladrielConnection
 
 logger = logging.getLogger(__name__)
 
@@ -32,3 +33,8 @@ class GaladrielService:
             return res
         else:
             return self._get_galadriel_cfg(agent).model_dump()
+    
+    def generate_text(self, agent: str, prompt: str, system_prompt: str, model: str = None, **kwargs) -> str:
+        cfg = self._get_galadriel_cfg(agent)
+        connection = GaladrielConnection(cfg.model_dump())
+        return connection.generate_text(prompt, system_prompt, model, **kwargs)
