@@ -8,7 +8,7 @@ load_dotenv()
 def test_brain():
     config = {
         "llm_provider": "openai",
-        "model": "gpt-3.5-turbo",
+        "model": "gpt-4o",
         "plugins": [
             {
                 "name": "coingecko",
@@ -34,15 +34,16 @@ def test_brain():
         "who are you",
         "give me info about bitcoin",
         "what are all the things you can do?",
-        # "give me my pepe balance on base",
+        "give me my pepe balance on base",
         "get me info about litecoin",
-        # "send .0001 of native token to 0xFF6CBf6830C47F683aC3227baD83c0BE5397A08F"
+        "generate a react button",
+        "send .0001 of native token to 0xFF6CBf6830C47F683aC3227baD83c0BE5397A08F"
     ]
 
     for cmd in commands:
         print(f"\nTesting: {cmd}")
         result = brain.process_command(cmd)
-        print(f"Result: {result}")
+        # print(f"Result: {result}")
 
 if __name__ == "__main__":
     test_brain()

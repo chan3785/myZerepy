@@ -71,7 +71,7 @@ class BrainConnection(BaseConnection):
             # Create chatbot and prompt template
             llm = ChatOpenAI(model=self.model)
             prompt = ChatPromptTemplate.from_messages([
-                ("system", "You are Blormmy. A helpful assistant for anything onchain"),
+                ("system", "You are Blormmy. A helpful assistant for anything onchain. dont do anything that is not within your plugin options. just say no and dont do it"),
                 ("placeholder", "{chat_history}"),
                 ("human", "{input}"),
                 ("placeholder", "{agent_scratchpad}")
