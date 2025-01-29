@@ -1408,19 +1408,37 @@ goat-sdk = ">=0.1.0,<0.2.0"
 goat-sdk-wallet-evm = ">=0.1.0,<0.2.0"
 
 [[package]]
-name = "goat-sdk-wallet-evm"
+name = "goat-sdk-plugin-uniswap"
 version = "0.1.0"
+description = "Goat plugin for uniswap"
+optional = false
+python-versions = "<4.0,>=3.10"
+files = [
+    {file = "goat_sdk_plugin_uniswap-0.1.0-py3-none-any.whl", hash = "sha256:7b53f536964875ec7227d6c22dce4bb1ef45bb29932ff517e1432091a23c6270"},
+    {file = "goat_sdk_plugin_uniswap-0.1.0.tar.gz", hash = "sha256:fee1ca13578448573e88baf3062311027f23eb3feffd73ee760d09bcec5811f8"},
+]
+
+[package.dependencies]
+aiohttp = ">=3.0,<4.0"
+goat-sdk = ">=0.1.0,<0.2.0"
+goat-sdk-plugin-erc20 = ">=0.1.0,<0.2.0"
+goat-sdk-wallet-evm = ">=0.1.1,<0.2.0"
+
+[[package]]
+name = "goat-sdk-wallet-evm"
+version = "0.1.1"
 description = "Goat SDK EVM wallet implementation"
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "goat_sdk_wallet_evm-0.1.0-py3-none-any.whl", hash = "sha256:620dabfac380d3f678cb9466f286de766f5aefe62d49c82ee50e4528e2a59c5e"},
-    {file = "goat_sdk_wallet_evm-0.1.0.tar.gz", hash = "sha256:96454dd9fb39e28740ea12ce53506618ec511bb0a3a31ec4b1908b373118c891"},
+    {file = "goat_sdk_wallet_evm-0.1.1-py3-none-any.whl", hash = "sha256:41143367fca696e5fdd6d6b09639a691eb8f4ebebef4248531c012f3497ab1ee"},
+    {file = "goat_sdk_wallet_evm-0.1.1.tar.gz", hash = "sha256:55840ebb625a34aa4b300d52e197e4e739c33a6630952bb00cea1d27ff28c16b"},
 ]
 
 [package.dependencies]
 evmchains = ">=0.1.3,<0.2.0"
 goat-sdk = ">=0.1.0,<0.2.0"
+typing-extensions = ">=4.12.2,<5.0.0"
 
 [[package]]
 name = "goat-sdk-wallet-web3"
@@ -3891,4 +3909,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "c818d694684861ace944374986130845403471d6e135c3d12606c92d6896f8f7"
+content-hash = "0dd4327ab7ab722ec6c386d03911b6ae8e8a879b18d4af090f18173c778e6330"

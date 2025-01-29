@@ -1,4 +1,6 @@
 import logging
+import os
+from dotenv import load_dotenv
 from typing import Dict, Any, List
 from dataclasses import dataclass
 from langchain_openai import ChatOpenAI
@@ -10,6 +12,7 @@ from goat_wallets.evm import send_eth
 from goat_plugins.coingecko import coingecko, CoinGeckoPluginOptions
 from goat_plugins.erc20 import erc20, ERC20PluginOptions
 from goat_plugins.erc20.token import PEPE, USDC
+from goat_plugins.uniswap import uniswap, UniswapPluginOptions
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
 from src.connections.goat_connection import GoatConnection
 
@@ -67,19 +70,19 @@ class BrainConnection(BaseConnection):
             # Create chatbot and prompt template
             llm = ChatOpenAI(model=self.model)
             prompt = ChatPromptTemplate.from_messages([
-                ("system", "You are a helpful assistant"),
+                ("system", "You are Blormmy. A helpful assistant for anything onchain"),
                 ("placeholder", "{chat_history}"),
                 ("human", "{input}"),
                 ("placeholder", "{agent_scratchpad}")
             ])
-
+            load_dotenv()
             # Initialize tools
             tools = get_on_chain_tools(
                 wallet=self.goat_connection._wallet_client,
                 plugins=[
                     send_eth(),
                     erc20(options=ERC20PluginOptions(tokens=[USDC, PEPE])),
-                    coingecko(options=CoinGeckoPluginOptions(api_key=self.config.get("coingecko_key")))
+                    coingecko(options=CoinGeckoPluginOptions(api_key=os.getenv("COINGECKO_KEY")))
                 ],
             )
 
