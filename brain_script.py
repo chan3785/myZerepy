@@ -34,7 +34,8 @@ def test_brain():
         "who are you",
         "give me info about bitcoin",
         "what are all the things you can do?",
-        "give me my pepe balance on base",
+        "give me my eth balance",
+        "what is the eth balance of 0xFF6CBf6830C47F683aC3227baD83c0BE5397A08F",
         "get me info about litecoin",
         "generate a react button",
         "send .0001 of native token to 0xFF6CBf6830C47F683aC3227baD83c0BE5397A08F"
