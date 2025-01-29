@@ -15,6 +15,7 @@ from goat_plugins.erc20.token import PEPE, USDC
 from goat_plugins.uniswap import uniswap, UniswapPluginOptions
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
 from src.connections.goat_connection import GoatConnection
+from goat_plugins.uniswap import uniswap, UniswapPluginOptions
 
 logger = logging.getLogger("connections.brain_connection")
 
@@ -85,6 +86,10 @@ class BrainConnection(BaseConnection):
                     coingecko(options=CoinGeckoPluginOptions(api_key=os.getenv("COINGECKO_KEY")))
                 ],
             )
+
+            # uniswap(options=UniswapPluginOptions(     eventually we will add this but its asking me for uniswap base url and api key and i cannot find these anywhere
+            # api_key=os.getenv("UNISWAP_API_KEY"),
+            # base_url=os.getenv("UNISWAP_BASE_URL", "https://trade-api.gateway.uniswap.org/v1")
 
             # Create agent and executor
             agent = create_tool_calling_agent(llm, tools, prompt)
