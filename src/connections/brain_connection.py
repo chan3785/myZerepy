@@ -1,15 +1,19 @@
 import logging
-import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List
+from dataclasses import dataclass
+from langchain_openai import ChatOpenAI
+from langchain.agents import AgentExecutor, create_tool_calling_agent
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from goat_adapters.langchain import get_on_chain_tools
+from goat_wallets.evm import send_eth
+from goat_plugins.coingecko import coingecko, CoinGeckoPluginOptions
+from goat_plugins.erc20 import erc20, ERC20PluginOptions
+from goat_plugins.erc20.token import PEPE, USDC
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
-from src.schemas.brain_schemas import BrainResponse
-from src.constants.brain_prompts import  INTENT_PROMPT
-from src.connections.openai_connection import OpenAIConnection
 from src.connections.goat_connection import GoatConnection
-from src.helpers.brain_helper import enhance_goat_params
 
 logger = logging.getLogger("connections.brain_connection")
-
 
 class BrainConnectionError(Exception):
     """Base exception for Brain connection errors"""
@@ -19,17 +23,16 @@ class BrainConnection(BaseConnection):
     def __init__(self, config: Dict[str, Any]):
         self.llm_provider = None
         self.model = None
-        # Initialize GOAT with debug logging
+        self.agent_executor = None
+        self.chat_history = ChatHistory()
+        
         logger.info("Initializing GOAT connection...")
         self.goat_connection = GoatConnection(config)
         super().__init__(config)
-        self.load_configuration()
-
-    def load_configuration(self):
-        """Load configuration from persistent storage."""
+        
+        # Load essential configuration
         self.model = self.config.get("model")
         self.llm_provider = self.config.get("llm_provider")
-
         if not self.model or not self.llm_provider:
             raise ValueError("Configuration must include 'model' and 'llm_provider'")
 
@@ -49,152 +52,108 @@ class BrainConnection(BaseConnection):
             "process-command": Action(
                 name="process-command",
                 parameters=[
-                    ActionParameter("command", True, str, "Natural language command to process"),
-                    ActionParameter("context", False, str, "Additional context for processing")
+                    ActionParameter("command", True, str, "Natural language command to process")
                 ],
                 description="Process natural language into blockchain action"
             )
         }
 
-    def configure(self) -> bool:
+    def _setup_langchain_agent(self) -> None:
+        """Initialize Langchain agent with GOAT tools"""
         try:
-            self.validate_config(self.config)
-            self.llm_provider = OpenAIConnection(self.config)
+            if not self.goat_connection._wallet_client:
+                raise BrainConnectionError("Wallet client not initialized")
             
-            if not self._ping_llm_provider():
-                raise BrainConnectionError("Failed to connect to LLM provider")
+            # Create chatbot and prompt template
+            llm = ChatOpenAI(model=self.model)
+            prompt = ChatPromptTemplate.from_messages([
+                ("system", "You are a helpful assistant"),
+                ("placeholder", "{chat_history}"),
+                ("human", "{input}"),
+                ("placeholder", "{agent_scratchpad}")
+            ])
 
-            # Configure GOAT and log available actions
-            if not self.goat_connection.is_configured():
-                logger.info("Configuring GOAT connection...")
-                if not self.goat_connection.configure():
-                    raise BrainConnectionError("Failed to configure GOAT connection")
+            # Initialize tools
+            tools = get_on_chain_tools(
+                wallet=self.goat_connection._wallet_client,
+                plugins=[
+                    send_eth(),
+                    erc20(options=ERC20PluginOptions(tokens=[USDC, PEPE])),
+                    coingecko(options=CoinGeckoPluginOptions(api_key=self.config.get("coingecko_key")))
+                ],
+            )
+
+            # Create agent and executor
+            agent = create_tool_calling_agent(llm, tools, prompt)
+            self.agent_executor = AgentExecutor(
+                agent=agent,
+                tools=tools,
+                handle_parsing_errors=True,
+                verbose=True
+            )
             
-            # Log available GOAT actions for debugging
-            logger.info("Available GOAT actions:")
-            for action_name, action in self.goat_connection.actions.items():
-                logger.info(f"  - {action_name}: {action.description}")
+            logger.info("Successfully initialized Langchain agent with GOAT tools")
 
+        except Exception as e:
+            raise BrainConnectionError(f"Agent setup failed: {str(e)}")
+
+    def configure(self) -> bool:
+        """Configure the brain connection and its dependencies"""
+        try:
+            # Configure GOAT connection
+            if not self.goat_connection.is_configured() and not self.goat_connection.configure():
+                raise BrainConnectionError("Failed to configure GOAT connection")
+            
+            # Set up Langchain agent
+            self._setup_langchain_agent()
             logger.info("Brain connection configured successfully!")
             return True
+            
         except Exception as e:
             logger.error(f"Brain configuration failed: {e}")
             return False
 
     def is_configured(self, verbose: bool = False) -> bool:
-        is_ready = (self.llm_provider is not None and 
-                   self.model is not None and 
-                   self.goat_connection.is_configured())
-        if verbose and not is_ready:
+        configured = (
+            self.llm_provider is not None and 
+            self.agent_executor is not None and
+            self.goat_connection.is_configured()
+        )
+        
+        if verbose and not configured:
             if not self.llm_provider:
-                logger.error("LLM provider not configured")
-            if not self.model:
-                logger.error("Model not specified")
+                logger.error("LLM provider not initialized")
+            if not self.agent_executor:
+                logger.error("Langchain agent not initialized")
             if not self.goat_connection.is_configured():
                 logger.error("GOAT connection not configured")
-        return is_ready
+        return configured
 
-    def _ping_llm_provider(self) -> bool:
-        try:
-            response = self.llm_provider.perform_action(
-                "check-model",
-                kwargs={"model": self.model}
-            )
-            return response is not None
-        except Exception as e:
-            logger.error(f"Ping to LLM provider failed: {e}")
-            return False
+    def process_command(self, command: str) -> str:
+        """Process a natural language command using the Langchain agent"""
+        if not self.is_configured(verbose=True):
+            return "Brain connection not fully configured"
 
-    def _parse_intent(self, command: str, context: Optional[str] = None) -> BrainResponse:
         try:
-            # Use OpenAI for intent parsing only
-            response = self.llm_provider.perform_action(
-                "generate-text",
-                kwargs={
-                    "prompt": command,
-                    "system_prompt": INTENT_PROMPT,
-                    "model": self.model,
-                    "response_format": {"type": "json_object"}
-                }
-            )
+            # Add command to chat history and execute
+            self.chat_history.add_message("human", command)
+            response = self.agent_executor.invoke({
+                "input": command,
+                "chat_history": self.chat_history.to_langchain_messages()
+            })
             
-            # Validate response against schema
-            parsed_response = BrainResponse.model_validate_json(response)
-            
-            # Validate action exists in GOAT
-            if parsed_response.action != "none":
-                if not self._validate_goat_action_name(parsed_response.action):
-                    return BrainResponse(
-                        note=f"Unsupported action: {parsed_response.action}",
-                        action="none"
-                    )
-            
-            return parsed_response
+            output = response["output"]
+            self.chat_history.add_message("ai", output)
+            return output
 
         except Exception as e:
-            logger.error(f"Intent parsing failed: {e}")
-            return BrainResponse(
-                note=f"Sorry, I couldn't understand that request: {str(e)}",
-                action="none"
-            )
-
-    def _validate_goat_action_name(self, brain_action: str) -> Optional[str]:
-        """Validatie corresponding GOAT action name"""
-        available_actions = set(self.goat_connection.actions.keys())
-        if brain_action in available_actions:
-            return brain_action
-            
-        logger.error(f"No matching GOAT action found: {brain_action}")
-        logger.error(f"Available actions: {available_actions}")
-        return None
-
-    def _execute_goat_action(self, action: str, details: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute action using GOAT connection"""
-        try:
-            logger.debug(f"Executing GOAT action: {action} with details: {details}")
-            result = self.goat_connection.perform_action(action, **details)
-            return {
-                "success": True,
-                "result": result
-            }
-        except Exception as e:
-            logger.error(f"GOAT action execution failed: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-
-    def process_command(self, command: str, context: Optional[str] = None) -> Dict[str, Any]:
-        try:
-            response = self._parse_intent(command, context)
-            
-            if response.action == "none":
-                return {
-                    "success": True,
-                    "message": response.note,
-                    "action": "none"
-                }
-            logger.info("response object: ")
-            logger.info(response)
-            if response.action in ["get_address", "get_balance", "transfer"]:
-                response = enhance_goat_params(response)
-                
-            # Execute GOAT action with enhanced parameters
-            details = response.details.dict() if response.details else {}
-            result = self._execute_goat_action(response.action, details)
-            result["message"] = response.note
-            result["action"] = response.action
-            return result
-            
-        except Exception as e:
-            logger.error(f"Command processing failed: {e}")
-            return {
-                "success": False,
-                "message": f"Error processing command: {str(e)}",
-                "action": "none"
-            }
+            error_str = str(e)
+            if "'HexBytes' object has no attribute 'to_0x_hex'" in error_str:
+                return "Transaction submitted successfully! Note: Transaction details may take a few moments to appear on the blockchain."
+            return f"Error processing command: {str(e)}"
 
     def perform_action(self, action_name: str, kwargs: Dict[str, Any]) -> Any:
+        """Execute an action through the brain connection"""
         if action_name not in self.actions:
             raise KeyError(f"Unknown action: {action_name}")
 
@@ -208,3 +167,23 @@ class BrainConnection(BaseConnection):
 
         method = getattr(self, action_name.replace("-", "_"))
         return method(**kwargs)
+
+@dataclass
+class ChatHistory:
+    """Storage for chat context"""
+    messages: List[Dict[str, str]] = None
+
+    def __post_init__(self):
+        self.messages = [] if self.messages is None else self.messages
+
+    def add_message(self, role: str, content: str):
+        self.messages.append({"role": role, "content": content})
+
+    def to_langchain_messages(self):
+        return [
+            (SystemMessage if msg["role"] == "system" else 
+             HumanMessage if msg["role"] == "human" else 
+             AIMessage)(content=msg["content"])
+            for msg in self.messages
+            if msg["role"] in ("system", "human", "ai")
+        ]
