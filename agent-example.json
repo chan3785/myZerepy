@@ -7,6 +7,19 @@
   ],
   "traits": ["Curious", "Creative", "Innovative", "Funny"],
   "connections": {
+    "sonic": {
+      "network": "mainnet"
+    },
+    "evm": {
+      "ethereum": {
+        "rpc": "https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID"
+      }
+    },
+    "discord": {
+      "message_read_count": 10,
+      "message_emoji_name": "❤️",
+      "server_id": "1234567890"
+    },
     "twitter": {
       "timeline_read_count": 10,
       "own_tweet_replies_count": 2,
@@ -80,6 +93,7 @@
     "allora": { "chain": "testnet" }
   },
   "models": {
+    "xai": { "model": "grok-2-latest" },
     "openai": { "model": "gpt-3.5-turbo" },
     "anthropic": { "model": "claude-3-5-sonnet-20241022" },
     "ollama": { "base_url": "http://localhost:11434", "model": "llama3.2" },
