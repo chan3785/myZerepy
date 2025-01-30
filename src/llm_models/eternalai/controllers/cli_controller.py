@@ -4,11 +4,9 @@ import click
 from pydantic import TypeAdapter
 
 import logging
-from ....config.zerepy_config import ZEREPY_CONFIG, AgentName
+from src.config.zerepy_config import ZEREPY_CONFIG, AgentName
 from ..service import EternalAIService
 from src.lib import deep_pretty_print
-
-# how do i change the color of the font for the logger?
 
 logger = logging.getLogger(__name__)
 
@@ -21,15 +19,107 @@ class GetConfigOptions:
     )
 
 
+class GenerateTextOptions:
+    AGENT = click.Option(
+        ["--agent", "-a"],
+        required=True,
+        type=TypeAdapter(AgentName).validate_python,
+    )
+    PROMPT = click.Option(
+        ["--prompt", "-p"],
+        required=True,
+        type=str,
+    )
+    SYSTEM_PROMPT = click.Option(
+        ["--system-prompt", "-s"],
+        required=True,
+        type=str,
+    )
+    MODEL = click.Option(
+        ["--model", "-m"],
+        required=False,
+        type=str,
+    )
+    CHAIN_ID = click.Option(
+        ["--chain-id", "-c"],
+        required=False,
+        type=str,
+    )
+
+
+class CheckModelOptions:
+    AGENT = click.Option(
+        ["--agent", "-a"],
+        required=True,
+        type=TypeAdapter(AgentName).validate_python,
+    )
+    MODEL = click.Option(
+        ["--model", "-m"],
+        required=True,
+        type=str,
+    )
+
+
+class ListModelsOptions:
+    AGENT = click.Option(
+        ["--agent", "-a"],
+        required=True,
+        type=TypeAdapter(AgentName).validate_python,
+    )
+
+
 @CliController("eternalai")
 class EternalAICliController:
-    def __init__(self, solana_service: EternalAIService):
-        self.solana_service = solana_service
+    def __init__(self, eternal_service: EternalAIService):
+        self.eternal_service = eternal_service
 
     @CliCommand("get-config")
     def get_config(self, agent: GetConfigOptions.AGENT) -> None:  # type: ignore
-        res = self.solana_service.get_cfg(agent)
+        res = self.eternal_service.get_cfg(agent)
         res_str = deep_pretty_print(
             res, blacklisted_fields=["logger", "settings"], partial_match=True
         )
-        logging.info(f"Result:\n{res_str}")
+        logger.info(f"Result:\n{res_str}")
+
+    @CliCommand("generate")
+    async def generate_text(
+        self,
+        agent: GenerateTextOptions.AGENT,  # type: ignore
+        prompt: GenerateTextOptions.PROMPT,  # type: ignore
+        system_prompt: GenerateTextOptions.SYSTEM_PROMPT,  # type: ignore
+        model: GenerateTextOptions.MODEL,  # type: ignore
+        chain_id: GenerateTextOptions.CHAIN_ID,  # type: ignore
+    ) -> None:
+        cfg = ZEREPY_CONFIG.get_agent(agent).get_connection("eternalai")
+        res = await self.eternal_service.generate_text(
+            cfg,
+            prompt,
+            system_prompt,
+            model,
+            chain_id,
+        )
+        logger.info(f"Generated text:\n{res}")
+
+    @CliCommand("check-model")
+    async def check_model(
+        self,
+        agent: CheckModelOptions.AGENT,  # type: ignore
+        model: CheckModelOptions.MODEL,  # type: ignore
+    ) -> None:
+        cfg = ZEREPY_CONFIG.get_agent(agent).get_connection("eternalai")
+        res = await self.eternal_service.check_model(cfg, model)
+        logger.info(f"Model {model} is {'available' if res else 'not available'}")
+
+    @CliCommand("list-models")
+    async def list_models(
+        self,
+        agent: ListModelsOptions.AGENT,  # type: ignore
+    ) -> None:
+        cfg = ZEREPY_CONFIG.get_agent(agent).get_connection("eternalai")
+        models = await self.eternal_service.list_models(cfg)
+        if models:
+            logger.info("\nAvailable fine-tuned models:")
+            for i, model in enumerate(models, 1):
+                logger.info(f"{i}. {model}")
+        else:
+            logger.info("No fine-tuned models available")
