@@ -1,56 +1,41 @@
 import os
-from typing import Any, List
-from nest.core import Injectable
+from typing import Any
+import logging
 from dotenv import load_dotenv
 from openai import OpenAI
-import logging
+from nest.core import Injectable
 
-from ...config.zerepy_config import ZEREPY_CONFIG
-from ...config.agent_config.model_configs.openai import OpenAIConfig
+from src.config.agent_config.connection_configs.openai import OpenAIConfig
 
 logger = logging.getLogger(__name__)
 
-
 @Injectable
 class OpenAIService:
-    def __init__(self):
-        self._client = None
-
-    def _get_all_openai_cfgs(self) -> dict[str, OpenAIConfig]:
-        res: dict[str, OpenAIConfig] = ZEREPY_CONFIG.get_configs_by_connection("openai")
-        return res
-
-    def _get_openai_cfg(self, agent: str) -> OpenAIConfig:
-        res: OpenAIConfig = ZEREPY_CONFIG.get_agent(agent).get_connection("openai")
-        return res
-
-    def get_cfg(self, agent: str | None = None) -> dict[str, Any]:
-        if agent is None:
-            cfgs: dict[str, OpenAIConfig] = self._get_all_openai_cfgs()
-            res: dict[str, dict[str, Any]] = {}
-            for key, value in cfgs.items():
-                res[key] = value.model_dump()
-            return res
-        else:
-            return self._get_openai_cfg(agent).model_dump()
+    def get_cfg(self, cfg: OpenAIConfig) -> dict[str, Any]:
+        return cfg.model_dump()
 
     def _get_client(self) -> OpenAI:
         """Get or create OpenAI client"""
-        if not self._client:
-            api_key = os.getenv("OPENAI_API_KEY")
-            if not api_key:
-                raise ValueError("OpenAI API key not found in environment")
-            self._client = OpenAI(api_key=api_key)
-        return self._client
+        load_dotenv()
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OpenAI API key not found in environment")
+        return OpenAI(api_key=api_key)
 
-    def generate_text(self, prompt: str, system_prompt: str, model: str = None, **kwargs) -> str:
+    async def generate_text(
+        self,
+        cfg: OpenAIConfig,
+        prompt: str,
+        system_prompt: str,
+        model: str = None,
+    ) -> str:
         """Generate text using OpenAI models"""
         try:
             client = self._get_client()
             
             # Use configured model if none provided
             if not model:
-                model = self._get_openai_cfg("default").model
+                model = cfg.model
 
             completion = client.chat.completions.create(
                 model=model,
@@ -63,27 +48,27 @@ class OpenAIService:
             return completion.choices[0].message.content
             
         except Exception as e:
-            raise ValueError(f"Text generation failed: {e}")
+            raise ValueError(f"Text generation failed: {str(e)}")
 
-    def check_model(self, model, **kwargs):
+    async def check_model(self, cfg: OpenAIConfig, model: str) -> bool:
         """Check if a specific model is available"""
         try:
             client = self._get_client()
             try:
                 client.models.retrieve(model=model)
-                # If we get here, the model exists
                 return True
             except Exception:
                 return False
         except Exception as e:
-            raise ValueError(e)
+            raise ValueError(f"Model check failed: {str(e)}")
 
-    def list_models(self, **kwargs) -> None:
+    async def list_models(self, cfg: OpenAIConfig) -> None:
         """List all available OpenAI models"""
         try:
             client = self._get_client()
             response = client.models.list().data
             
+            # Filter for fine-tuned models
             fine_tuned_models = [
                 model for model in response 
                 if model.owned_by in ["organization", "user", "organization-owner"]
@@ -102,4 +87,4 @@ class OpenAIService:
                     logger.info(f"{i+1}. {model.id}")
                     
         except Exception as e:
-            raise ValueError(f"Listing models failed: {e}")
+            raise ValueError(f"Listing models failed: {str(e)}")
