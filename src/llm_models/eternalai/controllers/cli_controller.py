@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 class GetConfigOptions:
-    AGENT = click.Argument(
-        ["agent"],
+    AGENT = click.Option(
+        ["--agent", "-a"],
         required=False,
         type=TypeAdapter(AgentName).validate_python,
     )
@@ -75,11 +75,15 @@ class EternalAICliController:
 
     @CliCommand("get-config")
     def get_config(self, agent: GetConfigOptions.AGENT) -> None:  # type: ignore
-        res = self.eternal_service.get_cfg(agent)
-        res_str = deep_pretty_print(
-            res, blacklisted_fields=["logger", "settings"], partial_match=True
-        )
-        logger.info(f"Result:\n{res_str}")
+        if agent is None:
+            cfgs = ZEREPY_CONFIG.get_configs_by_connection("eternalai")
+            for key, value in cfgs.items():
+                cfg_dict = self.eternal_service.get_cfg(value)
+                logger.info(f"Config for {key}: {json.dumps(cfg_dict, indent=4)}")
+        else:
+            cfg = ZEREPY_CONFIG.get_agent(agent).get_connection("eternalai")
+            cfg_dict = self.eternal_service.get_cfg(cfg)
+            logger.info(f"Config for {agent}: {json.dumps(cfg_dict, indent=4)}")
 
     @CliCommand("generate")
     async def generate_text(
