@@ -33,13 +33,16 @@ def test_brain():
         "get me my wallet address",
         "who are you",
         "give me info about bitcoin",
+        "give me info about zerebro on solana",
         "what are all the things you can do?",
         "give me my eth balance",
         "what is the eth balance of 0xFF6CBf6830C47F683aC3227baD83c0BE5397A08F",
-        "get me info about litecoin",
+        "what is the market cap of zerebro",
         "generate a react button",
         "send .0001 of native token to 0xFF6CBf6830C47F683aC3227baD83c0BE5397A08F"
     ]
+
+    # commands = ["give me info about zerebro on solana"]
 
     for cmd in commands:
         print(f"\nTesting: {cmd}")
