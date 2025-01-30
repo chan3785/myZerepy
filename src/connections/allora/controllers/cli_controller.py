@@ -3,9 +3,10 @@ import click
 from pydantic import TypeAdapter
 import logging
 from src.config.zerepy_config import ZEREPY_CONFIG, AgentName
-from ..allora_service import AlloraService
+from ..service import AlloraService
 
 logger = logging.getLogger(__name__)
+
 
 class GetInferenceOptions:
     AGENT = click.Option(
@@ -17,8 +18,9 @@ class GetInferenceOptions:
         ["--topic-id", "-t"],
         required=True,
         type=int,
-        help="Topic ID to get inference for"
+        help="Topic ID to get inference for",
     )
+
 
 class ListTopicsOptions:
     AGENT = click.Option(
@@ -26,6 +28,7 @@ class ListTopicsOptions:
         required=False,
         type=TypeAdapter(AgentName).validate_python,
     )
+
 
 @CliController("allora")
 class AlloraCliController:
@@ -39,7 +42,7 @@ class AlloraCliController:
         result = await self.allora_service.get_inference(cfg, topic_id)
         logger.info(result)
 
-    @CliCommand("list-topics") 
+    @CliCommand("list-topics")
     async def list_topics(self, agent: ListTopicsOptions.AGENT) -> None:  # type: ignore
         logger.info("Listing available topics")
         cfg = ZEREPY_CONFIG.get_agent(agent or "default").get_connection("allora")

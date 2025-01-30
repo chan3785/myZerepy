@@ -5,6 +5,7 @@ from src.config.agent_config.connection_configs.allora import AlloraConfig
 
 logger = logging.getLogger(__name__)
 
+
 @Injectable
 class AlloraService:
     def get_cfg(self, cfg: AlloraConfig) -> dict[str, Any]:
@@ -17,7 +18,7 @@ class AlloraService:
             response = await client.get_inference_by_topic_id(topic_id)
             return {
                 "topic_id": topic_id,
-                **cfg.format_inference_data(response.inference_data)
+                **cfg.format_inference_data(response.inference_data),
             }
         except Exception as e:
             raise Exception(f"Failed to get inference: {str(e)}")

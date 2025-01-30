@@ -40,7 +40,6 @@ logger = logging.getLogger(__name__)
 # NOTE: all function parameters should be validated, NON NATIVE types. Any errors should be caught and re-raised with a more descriptive error message
 @Injectable
 class SolanaService:
-
     ############### reads ###############
     def get_cfg(self, cfg: SolanaConfig) -> dict[str, Any]:
         return cfg.to_json()

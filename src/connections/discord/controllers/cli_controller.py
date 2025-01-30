@@ -2,12 +2,12 @@ import json
 import click
 from nest.core.decorators.cli.cli_decorators import CliCommand, CliController
 from pydantic import TypeAdapter
-from src.config.agent_config.connection_configs.discord import DiscordConfig
 from src.config.zerepy_config import ZEREPY_CONFIG, AgentName
-from ..discord_service import DiscordService
+from ..service import DiscordService
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 class GetConfigOptions:
     AGENT = click.Option(
@@ -17,12 +17,14 @@ class GetConfigOptions:
         help="The agent to get the config for",
     )
 
+
 class ChannelOptions:
     SERVER_ID = click.Option(
         ["--server-id", "-s"],
         required=False,
         type=str,
     )
+
 
 class MessageOptions:
     CHANNEL_ID = click.Argument(
@@ -36,6 +38,7 @@ class MessageOptions:
         type=int,
     )
 
+
 class PostMessageOptions:
     CHANNEL_ID = click.Argument(
         ["channel_id"],
@@ -47,6 +50,7 @@ class PostMessageOptions:
         required=True,
         type=str,
     )
+
 
 class ReplyMessageOptions:
     CHANNEL_ID = click.Argument(
@@ -65,6 +69,7 @@ class ReplyMessageOptions:
         type=str,
     )
 
+
 class ReactMessageOptions:
     CHANNEL_ID = click.Argument(
         ["channel_id"],
@@ -81,6 +86,7 @@ class ReactMessageOptions:
         required=False,
         type=str,
     )
+
 
 @CliController("discord")
 class DiscordCliController:
@@ -112,7 +118,7 @@ class DiscordCliController:
 
     @CliCommand("read-messages")
     async def read_messages(
-        self, 
+        self,
         channel_id: MessageOptions.CHANNEL_ID,  # type: ignore
         count: MessageOptions.COUNT,  # type: ignore
     ) -> None:
@@ -144,7 +150,7 @@ class DiscordCliController:
         response = self.discord_service.post_message(cfg, channel_id, message)
         logger.info(f"Posted message: {json.dumps(response, indent=4)}")
 
-    @CliCommand("reply-to-message") 
+    @CliCommand("reply-to-message")
     async def reply_to_message(
         self,
         channel_id: ReplyMessageOptions.CHANNEL_ID,  # type: ignore
@@ -152,7 +158,9 @@ class DiscordCliController:
         message: ReplyMessageOptions.MESSAGE,  # type: ignore
     ) -> None:
         cfg = ZEREPY_CONFIG.get_default_agent().get_connection("discord")
-        response = self.discord_service.reply_to_message(cfg, channel_id, message_id, message)
+        response = self.discord_service.reply_to_message(
+            cfg, channel_id, message_id, message
+        )
         logger.info(f"Reply sent: {json.dumps(response, indent=4)}")
 
     @CliCommand("react-to-message")

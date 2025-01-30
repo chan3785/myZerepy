@@ -6,6 +6,7 @@ from src.config.agent_config.connection_configs.discord import DiscordConfig
 
 logger = logging.getLogger(__name__)
 
+
 class DiscordService:
     def __init__(self):
         self.base_url = "https://discord.com/api/v10"
@@ -13,7 +14,7 @@ class DiscordService:
     ############### reads ###############
     def get_cfg(self, cfg: DiscordConfig) -> dict[str, Any]:
         return cfg.to_json()
-        
+
     def list_channels(self, cfg: DiscordConfig, server_id: str) -> dict:
         """Lists all Discord channels under the server"""
         request_path = f"/guilds/{server_id}/channels"
@@ -32,7 +33,9 @@ class DiscordService:
         logger.info(f"Retrieved {len(formatted_response)} messages")
         return formatted_response
 
-    def read_mentioned_messages(self, cfg: DiscordConfig, channel_id: str, count: int) -> dict:
+    def read_mentioned_messages(
+        self, cfg: DiscordConfig, channel_id: str, count: int
+    ) -> dict:
         """Reads messages in a channel and filters for bot mentioned messages"""
         messages = self.read_messages(cfg, channel_id, count)
         mentioned_messages = self._filter_message_for_bot_mentions(cfg, messages)
@@ -50,26 +53,34 @@ class DiscordService:
         logger.info("Message posted successfully")
         return formatted_response
 
-    def reply_to_message(self, cfg: DiscordConfig, channel_id: str, message_id: str, message: str) -> dict:
+    def reply_to_message(
+        self, cfg: DiscordConfig, channel_id: str, message_id: str, message: str
+    ) -> dict:
         """Reply to a message"""
         logger.debug("Replying to a message")
         request_path = f"/channels/{channel_id}/messages"
-        payload = json.dumps({
-            "content": f"{message}",
-            "message_reference": {
-                "channel_id": f"{channel_id}",
-                "message_id": f"{message_id}",
-            },
-        })
+        payload = json.dumps(
+            {
+                "content": f"{message}",
+                "message_reference": {
+                    "channel_id": f"{channel_id}",
+                    "message_id": f"{message_id}",
+                },
+            }
+        )
         response = self._post_request(cfg, request_path, payload)
         formatted_response = self._format_reply_message(response)
         logger.info("Reply message posted successfully")
         return formatted_response
 
-    def react_to_message(self, cfg: DiscordConfig, channel_id: str, message_id: str, emoji_name: str) -> None:
+    def react_to_message(
+        self, cfg: DiscordConfig, channel_id: str, message_id: str, emoji_name: str
+    ) -> None:
         """React to a message"""
         logger.debug("Reacting to a message")
-        request_path = f"/channels/{channel_id}/messages/{message_id}/reactions/{emoji_name}/@me"
+        request_path = (
+            f"/channels/{channel_id}/messages/{message_id}/reactions/{emoji_name}/@me"
+        )
         self._put_request(cfg, request_path)
         logger.info("Reacted to message successfully")
 
@@ -136,19 +147,23 @@ class DiscordService:
         }
         response = requests.request("PUT", url, headers=headers, data={})
         if response.status_code != 204:
-            raise Exception(f"Failed to called PUT to Discord: {response.status_code} - {response.text}")
+            raise Exception(
+                f"Failed to called PUT to Discord: {response.status_code} - {response.text}"
+            )
         return
 
     def _post_request(self, cfg: DiscordConfig, url_path: str, payload: str) -> dict:
         url = f"{self.base_url}{url_path}"
         headers = {
             "Content-Type": "application/json",
-            "Accept": "application/json", 
+            "Accept": "application/json",
             "Authorization": cfg.get_auth_token(),
         }
         response = requests.request("POST", url, headers=headers, data=payload)
         if response.status_code != 200:
-            raise Exception(f"Failed to call POST to Discord: {response.status_code} - {response.text}")
+            raise Exception(
+                f"Failed to call POST to Discord: {response.status_code} - {response.text}"
+            )
         return json.loads(response.text)
 
     def _get_request(self, cfg: DiscordConfig, url_path: str) -> str:
@@ -159,7 +174,9 @@ class DiscordService:
         }
         response = requests.request("GET", url, headers=headers, data={})
         if response.status_code != 200:
-            raise Exception(f"Failed to call GET to Discord: {response.status_code} - {response.text}")
+            raise Exception(
+                f"Failed to call GET to Discord: {response.status_code} - {response.text}"
+            )
         return json.loads(response.text)
 
     def _filter_channels_for_type_text(self, data):

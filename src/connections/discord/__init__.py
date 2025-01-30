@@ -1,6 +1,6 @@
 from typing import Any, List
 from nest.core import Module
-from .discord_service import DiscordService
+from .service import DiscordService
 from .controllers.cli_controller import DiscordCliController
 import logging
 
@@ -17,6 +17,7 @@ PROVIDERS: List[Any] = [DiscordService]
 
 # exports
 EXPORTS: List[Any] = []
+
 
 @Module(
     imports=IMPORTS,
