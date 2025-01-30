@@ -13,44 +13,17 @@ logger = logging.getLogger(__name__)
 
 @Injectable
 class AnthropicService:
-    def __init__(self):
-        self._client = None
+    def get_cfg(self, cfg: AnthropicConfig) -> dict[str, Any]:
+        return cfg.model_dump()
 
-    def _get_all_anthropic_cfgs(self) -> dict[str, AnthropicConfig]:
-        res: dict[str, AnthropicConfig] = ZEREPY_CONFIG.get_configs_by_connection("anthropic")
-        return res
-
-    def _get_anthropic_cfg(self, agent: str) -> AnthropicConfig:
-        res: AnthropicConfig = ZEREPY_CONFIG.get_agent(agent).get_connection("anthropic")
-        return res
-
-    def get_cfg(self, agent: str | None = None) -> dict[str, Any]:
-        if agent is None:
-            cfgs: dict[str, AnthropicConfig] = self._get_all_anthropic_cfgs()
-            res: dict[str, dict[str, Any]] = {}
-            for key, value in cfgs.items():
-                res[key] = value.model_dump()
-            return res
-        else:
-            return self._get_anthropic_cfg(agent).model_dump()
-
-    def _get_client(self) -> Anthropic:
-        """Get or create Anthropic client"""
-        if not self._client:
-            api_key = os.getenv("ANTHROPIC_API_KEY")
-            if not api_key:
-                raise ValueError("Anthropic API key not found in environment")
-            self._client = Anthropic(api_key=api_key)
-        return self._client
-
-    def generate_text(self, prompt: str, system_prompt: str, model: str = None, **kwargs) -> str:
+    def generate_text(self, cfg: AnthropicConfig, prompt: str, system_prompt: str, model: str = None, **kwargs) -> str:
         """Generate text using Anthropic models"""
         try:
             client = self._get_client()
             
-            # Use configured model if none provided
+            # Use configured model if none provided 
             if not model:
-                model = self._get_anthropic_cfg("default").model
+                model = cfg.model
 
             message = client.messages.create(
                 model=model,
@@ -60,21 +33,16 @@ class AnthropicService:
                 messages=[
                     {
                         "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": prompt
-                            }
-                        ]
+                        "content": [{"type": "text", "text": prompt}]
                     }
-                ]
+                ],
             )
             return message.content[0].text
             
         except Exception as e:
-            raise ValueError(f"Text generation failed: {e}")
+            raise ValueError(f"Text generation failed: {str(e)}")
 
-    def check_model(self, model: str, **kwargs) -> bool:
+    def check_model(self, cfg: AnthropicConfig, model: str, **kwargs) -> bool:
         """Check if a specific model is available"""
         try:
             client = self._get_client()
@@ -90,7 +58,7 @@ class AnthropicService:
         except Exception as e:
             raise ValueError(f"Model check failed: {e}")
 
-    def list_models(self, **kwargs) -> None:
+    def list_models(self, cfg: AnthropicConfig, **kwargs) -> None:
         """List all available Anthropic models"""
         try:
             client = self._get_client()

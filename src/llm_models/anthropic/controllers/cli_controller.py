@@ -12,11 +12,31 @@ logger = logging.getLogger(__name__)
 
 
 class GetConfigOptions:
-    AGENT = click.Argument(
-        ["agent"],
+    AGENT = click.Option(
+        ["--agent", "-a"],
         required=False,
         type=TypeAdapter(AgentName).validate_python,
     )
+
+
+class GenerateTextOptions:
+    PROMPT = click.Argument(["prompt"], required=True, type=str)
+    SYSTEM_PROMPT = click.Argument(["system_prompt"], required=True, type=str)
+    MODEL = click.Option(["--model", "-m"], required=False, type=str)
+    AGENT = click.Option(
+        ["--agent", "-a"],
+        required=False,
+        type=TypeAdapter(AgentName).validate_python,
+    )
+
+
+class ModelOptions:
+    AGENT = click.Option(
+        ["--agent", "-a"],
+        required=False,
+        type=TypeAdapter(AgentName).validate_python,
+    )
+    MODEL = click.Argument(["model"], required=True, type=str)
 
 
 @CliController("anthropic")
@@ -25,23 +45,50 @@ class AnthropicCliController:
         self.anthropic_service = anthropic_service
 
     @CliCommand("get-config")
-    def get_config(self, agent: GetConfigOptions.AGENT) -> None:  # type: ignore
-        res = self.anthropic_service.get_cfg(agent)
-        res_str = deep_pretty_print(
-            res, blacklisted_fields=["logger", "settings"], partial_match=True
-        )
-        logging.info(f"Result:\n{res_str}")
+    async def get_config(self, agent: GetConfigOptions.AGENT) -> None:  # type: ignore
+        logger.info(f"Getting config for {agent}")
+        if agent is None:
+            cfgs = ZEREPY_CONFIG.get_configs_by_connection("anthropic")
+            for key, value in cfgs.items():
+                cfg_dict = self.anthropic_service.get_cfg(value)
+                logger.info(f"Config for {key}: {json.dumps(cfg_dict, indent=4)}")
+        else:
+            cfg = ZEREPY_CONFIG.get_agent(agent).get_connection("anthropic")
+            cfg_dict = self.anthropic_service.get_cfg(cfg)
+            logger.info(f"Config for {agent}: {json.dumps(cfg_dict, indent=4)}")
 
     @CliCommand("generate-text")
-    def generate_text(self, prompt: str, system_prompt: str, model: str = None) -> None:
-        res = self.anthropic_service.generate_text(prompt, system_prompt, model)
-        logging.info(f"Generated text:\n{res}")
+    async def generate_text(
+        self,
+        prompt: GenerateTextOptions.PROMPT,  # type: ignore
+        system_prompt: GenerateTextOptions.SYSTEM_PROMPT,  # type: ignore
+        model: GenerateTextOptions.MODEL,  # type: ignore
+        agent: GenerateTextOptions.AGENT,  # type: ignore
+    ) -> None:
+        if agent is None:
+            cfg = ZEREPY_CONFIG.get_default_agent().get_connection("anthropic")
+        else:
+            cfg = ZEREPY_CONFIG.get_agent(agent).get_connection("anthropic")
+        res = self.anthropic_service.generate_text(cfg, prompt, system_prompt, model)
+        logger.info(f"Generated text:\n{res}")
 
     @CliCommand("check-model")
-    def check_model(self, model: str) -> None:
-        res = self.anthropic_service.check_model(model)
-        logging.info(f"Model {model} availability: {res}")
+    async def check_model(
+        self,
+        model: ModelOptions.MODEL,  # type: ignore
+        agent: ModelOptions.AGENT,  # type: ignore
+    ) -> None:
+        if agent is None:
+            cfg = ZEREPY_CONFIG.get_default_agent().get_connection("anthropic")
+        else:
+            cfg = ZEREPY_CONFIG.get_agent(agent).get_connection("anthropic")
+        res = self.anthropic_service.check_model(cfg, model)
+        logger.info(f"Model {model} availability: {res}")
 
     @CliCommand("list-models")
-    def list_models(self) -> None:
-        self.anthropic_service.list_models()
+    async def list_models(self, agent: GetConfigOptions.AGENT) -> None:  # type: ignore
+        if agent is None:
+            cfg = ZEREPY_CONFIG.get_default_agent().get_connection("anthropic")
+        else:
+            cfg = ZEREPY_CONFIG.get_agent(agent).get_connection("anthropic")
+        self.anthropic_service.list_models(cfg)
