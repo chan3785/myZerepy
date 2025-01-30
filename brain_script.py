@@ -29,25 +29,25 @@ def test_brain():
         return
 
     # Test commands
-    commands = [
-        "get me my wallet address",
-        "who are you",
-        "give me info about bitcoin",
-        "give me info about zerebro on solana",
-        "what are all the things you can do?",
-        "give me my eth balance",
-        "what is the eth balance of 0xFF6CBf6830C47F683aC3227baD83c0BE5397A08F",
-        "what is the market cap of zerebro",
-        "generate a react button",
-        "send .0001 of native token to 0xFF6CBf6830C47F683aC3227baD83c0BE5397A08F"
-    ]
+    # commands = [
+    #     "get me my wallet address",
+    #     "who are you",
+    #     "give me info about bitcoin",
+    #     "give me info about zerebro on solana",
+    #     "what are all the things you can do?",
+    #     "give me my eth balance",
+    #     "what is the eth balance of 0xFF6CBf6830C47F683aC3227baD83c0BE5397A08F",
+    #     "what is the market cap of zerebro",
+    #     "generate a react button",
+    #     "send .0001 of native token to 0xFF6CBf6830C47F683aC3227baD83c0BE5397A08F"
+    # ]
 
-    # commands = ["give me info about zerebro on solana"]
+    commands = ["help me swap .0005 eth for usdc "]
 
     for cmd in commands:
         print(f"\nTesting: {cmd}")
         result = brain.process_command(cmd)
-        # print(f"Result: {result}")
+        print(f"Result: {result}")
 
 if __name__ == "__main__":
     test_brain()

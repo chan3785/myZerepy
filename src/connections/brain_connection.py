@@ -83,13 +83,12 @@ class BrainConnection(BaseConnection):
                 plugins=[
                     send_eth(),
                     erc20(options=ERC20PluginOptions(tokens=[USDC, PEPE])),
-                    coingecko(options=CoinGeckoPluginOptions(api_key=os.getenv("COINGECKO_KEY")))
+                    coingecko(options=CoinGeckoPluginOptions(api_key=os.getenv("COINGECKO_KEY"))),
+                    uniswap(options=UniswapPluginOptions(api_key=os.getenv("UNISWAP_API_KEY"), base_url=os.getenv("UNISWAP_BASE_URL", "https://trade-api.gateway.uniswap.org/v1")))
                 ],
             )
 
-            # uniswap(options=UniswapPluginOptions(     eventually we will add this but its asking me for uniswap base url and api key and i cannot find these anywhere
-            # api_key=os.getenv("UNISWAP_API_KEY"),
-            # base_url=os.getenv("UNISWAP_BASE_URL", "https://trade-api.gateway.uniswap.org/v1")
+            
 
             # Create agent and executor
             agent = create_tool_calling_agent(llm, tools, prompt)
