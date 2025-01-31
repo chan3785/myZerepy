@@ -66,7 +66,7 @@ class BaseConnection(ABC):
                         "status": "missing_params",
                         "message": f"Missing required parameters for {action.name}: {', '.join(missing_params)}",
                         "missing_params": missing_params,
-                        "required_params": all_required_params  # NEW: Return all required parameters
+                        "required_params": all_required_params 
                     }
 
                 method_name = action.name.replace('-', '_')

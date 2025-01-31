@@ -12,6 +12,7 @@ from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.history import FileHistory
 from src.agent import ZerePyAgent
 from src.helpers import print_h_bar
+from src.langgraph_agent import LangGraphAgent
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -33,6 +34,7 @@ class Command:
 class ZerePyCLI:
     def __init__(self):
         self.agent = None
+        self.langgraph_agent = None
         
         # Create config directory if it doesn't exist
         self.config_dir = Path.home() / '.zerepy'
@@ -334,6 +336,7 @@ class ZerePyCLI:
     def _load_agent_from_file(self, agent_name):
         try: 
             self.agent = ZerePyAgent(agent_name)
+            self.langgraph_agent = LangGraphAgent(agent_name, True) 
             logger.info(f"\n✅ Successfully loaded agent: {self.agent.name}")
         except FileNotFoundError:
             logger.error(f"Agent file not found: {agent_name}")
@@ -510,23 +513,40 @@ class ZerePyCLI:
 
     def chat_session(self, input_list: List[str]) -> None:
         """Handle chat command"""
+        langchain_session = False
+
         if self.agent is None:
             logger.info("No agent loaded. Use 'load-agent' first.")
             return
+        
+        run_langchain = input("Do you want to start a Langchain session chat? (y/n): ")
+
+        if (run_langchain.lower() == 'y'):
+            langchain_session = True
+            messages = []
 
         if not self.agent.is_llm_set:
             self.agent._setup_llm_provider()
 
-        logger.info(f"\nStarting chat with {self.agent.name}")
+        logger.info(f"\nStarting chat with {self.agent.name} [" + ("Langchain Mode" if langchain_session else "Normal Mode") + "]")
         print_h_bar()
 
         while True:
             try:
                 user_input = self.session.prompt("\nYou: ").strip()
+                
                 if user_input.lower() == 'exit':
                     break
-                
-                response = self.agent.prompt_llm(user_input)
+
+                messages.append({"role": "user", "content": user_input})
+
+                if (langchain_session):
+                    response = self.langgraph_agent.invoke_chat(messages)
+                    print(response)
+                    #messages.append({"role": "assistant", "content": response})
+                else:
+                    response = self.agent.prompt_llm(user_input)
+
                 logger.info(f"\n{self.agent.name}: {response}")
                 print_h_bar()
                 
