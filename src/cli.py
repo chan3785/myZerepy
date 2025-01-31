@@ -554,8 +554,7 @@ class ZerePyCLI:
 
                 if (langchain_session):
                     response = self.langgraph_agent.invoke_chat(messages)
-                    print(response)
-                    #messages.append({"role": "assistant", "content": response})
+                    messages.append({"role": "assistant", "content": response})
                 else:
                     response = self.agent.prompt_llm(user_input)
 
