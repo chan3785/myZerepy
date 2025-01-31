@@ -12,7 +12,7 @@ from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.history import FileHistory
 from src.agent import ZerePyAgent
 from src.helpers import print_h_bar
-from src.langgraph_agent import LangGraphAgent
+from src.langgraph.langgraph_agent import LangGraphAgent
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
