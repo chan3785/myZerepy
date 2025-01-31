@@ -2,6 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Callable
 from dataclasses import dataclass
+from langgraph.prebuilt import ToolExecutor
 
 @dataclass
 class ActionParameter:
@@ -37,9 +38,44 @@ class BaseConnection(ABC):
             self.config = self.validate_config(config) 
             # Register actions during initialization
             self.register_actions()
+        #Create tool executor for registered actions 
+            tools = [self._create_tool(action) for action in self.actions.values()]
+            self.tool_executor = ToolExecutor(tools)
         except Exception as e:
             logging.error("Could not initialize the connection")
             raise e
+    
+    def _create_tool(self, action: Action) -> Callable:
+            """Convert an Action to a LangGraph tool format"""
+            
+            def tool_wrapper(tool_input: dict):
+                print(f"Tool invoked: {action.name} with arguments: {tool_input}")
+                
+                missing_params = [param.name for param in action.parameters if param.required and param.name not in tool_input]
+                all_required_params = [param.name for param in action.parameters if param.required]
+                
+                if missing_params:
+                    print(f"⚠️ Missing required parameters for {action.name}: {missing_params}")
+                    return {
+                        "status": "missing_params",
+                        "message": f"Missing required parameters for {action.name}: {', '.join(missing_params)}",
+                        "missing_params": missing_params,
+                        "required_params": all_required_params  # NEW: Return all required parameters
+                    }
+
+                method_name = action.name.replace('-', '_')
+                method = getattr(self, method_name)
+                return method(**tool_input) 
+
+            tool_wrapper.__name__ = action.name
+            tool_wrapper.__doc__ = action.description
+            
+            tool_wrapper.__annotations__ = {
+                param.name: param.type 
+                for param in action.parameters
+            }
+
+            return tool_wrapper
 
     @property
     @abstractmethod
@@ -94,7 +130,7 @@ class BaseConnection(ABC):
 
     def perform_action(self, action_name: str, **kwargs) -> Any:
         """
-        Perform a registered action with the given parameters.
+        Perform a registered action with the given parameters. 
         
         Args:
             action_name: Name of the action to perform
