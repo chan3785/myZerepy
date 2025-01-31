@@ -1,6 +1,5 @@
 import os
 from dotenv import load_dotenv
-from src.connection_manager import ConnectionManager
 from langchain_openai import ChatOpenAI
 from typing_extensions import TypedDict
 from langchain_core.messages import AIMessage,ToolMessage
@@ -9,8 +8,10 @@ from langgraph.prebuilt import create_react_agent
 from pathlib import Path
 import json
 
+#This class is responsible for setting up langgraph agents
+
 class LangGraphAgent:
-    def __init__(self,agent_name: str, provide_tools:bool):
+    def __init__(self, agent_name: str, provide_tools: bool, connection_manager=None):
 
         agent_path = Path("agents") / f"{agent_name}.json"
         agent_dict = json.load(open(agent_path, "r"))
@@ -21,11 +22,28 @@ class LangGraphAgent:
         if "config" not in agent_dict:
             raise KeyError(f"Missing required fields: config")
         
+        self.connection_manager = connection_manager
+        self.langchainConfig = agent_dict["langchain_config"]
         self.provideTools = provide_tools
-        self.connection_manager = ConnectionManager(agent_dict["config"])
         self.langgraphAgent = self._setup_langgraph_agent()
-        
+    
 
+    def _setup_langgraph_agent(self):
+        load_dotenv()
+        api_key = os.getenv("OPENAI_API_KEY")    #default to use openai for now 
+        if not api_key:
+            raise ValueError("OpenAI API key not found in environment variables")
+
+        if self.provideTools:
+            model = ChatOpenAI(model=self.langchainConfig["executor_model"], temperature=0.7, openai_api_key=api_key)
+            tools = self._collect_tools_from_connections()
+            tool_executor = ToolExecutor(tools)
+            app = create_react_agent(model, tool_executor.tools)
+        else:
+            app =  ChatOpenAI(model=self.langchainConfig["driver_model"], api_key=api_key)
+            
+        return app
+    
     def _collect_tools_from_connections(self):
         tools = []  
         for connection_name in self.connection_manager.get_connections():
@@ -36,22 +54,8 @@ class LangGraphAgent:
                 print(f"Connection {connection_name} has no tools.")
         return tools
 
-    def _setup_langgraph_agent(self):
-        load_dotenv()
-        api_key = os.getenv("OPENAI_API_KEY")    #default to use openai for now 
-        if not api_key:
-            raise ValueError("OpenAI API key not found in environment variables")
-
-        model = ChatOpenAI(model="gpt-4", temperature=0.7, openai_api_key=api_key)
-        tools = self._collect_tools_from_connections()
-
-        if self.provideTools:
-            tool_executor = ToolExecutor(tools)
-            app = create_react_agent(model, tool_executor.tools)
-        else:
-            app = create_react_agent(model)
-            
-        return app
+    def invoke(self, user_input: str):
+        return self.langgraphAgent.invoke(user_input)
     
     def invoke_chat(self, messages: list[dict]):
         state = {"messages": messages}

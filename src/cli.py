@@ -13,6 +13,7 @@ from prompt_toolkit.history import FileHistory
 from src.agent import ZerePyAgent
 from src.helpers import print_h_bar
 from src.langgraph.langgraph_agent import LangGraphAgent
+from src.langgraph.graph_agent import GraphAgent
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -34,7 +35,7 @@ class Command:
 class ZerePyCLI:
     def __init__(self):
         self.agent = None
-        self.langgraph_agent = None
+        self.agent_file_name = ""
         
         # Create config directory if it doesn't exist
         self.config_dir = Path.home() / '.zerepy'
@@ -152,6 +153,15 @@ class ZerePyCLI:
                 tips=["Use 'exit' to end the chat session"],
                 handler=self.chat_session,
                 aliases=['talk']
+            )
+        )
+
+        self._register_command(
+            Command(
+                name="test-graph",
+                description="Test the graph agent",
+                tips=["File is in langgraph/graph_agent.py"],
+                handler=self.test_graph,
             )
         )
         
@@ -336,7 +346,7 @@ class ZerePyCLI:
     def _load_agent_from_file(self, agent_name):
         try: 
             self.agent = ZerePyAgent(agent_name)
-            self.langgraph_agent = LangGraphAgent(agent_name, True) 
+            self.agent_file_name = agent_name
             logger.info(f"\n✅ Successfully loaded agent: {self.agent.name}")
         except FileNotFoundError:
             logger.error(f"Agent file not found: {agent_name}")
@@ -522,6 +532,8 @@ class ZerePyCLI:
         run_langchain = input("Do you want to start a Langchain session chat? (y/n): ")
 
         if (run_langchain.lower() == 'y'):
+            #load langgraph agent 
+            self.langgraph_agent = LangGraphAgent(self.agent_file_name, True,connection_manager=self.agent.connection_manager) 
             langchain_session = True
             messages = []
 
@@ -552,6 +564,16 @@ class ZerePyCLI:
                 
             except KeyboardInterrupt:
                 break
+
+    def test_graph(self,arg=None) -> None:
+        """Test the graph agent"""
+        logger.info(f"Testing the graph agent for agent : {self.agent.name}")
+        print_h_bar()
+        graph_agent = GraphAgent(self.agent_file_name)
+        final_state = graph_agent.run()
+        print(f"Final state: {final_state}")
+
+
 
     def exit(self, input_list: List[str]) -> None:
         """Exit the CLI gracefully"""
