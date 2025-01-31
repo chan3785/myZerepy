@@ -51,6 +51,12 @@ class BaseConnection(ABC):
             def tool_wrapper(tool_input: dict):
                 print(f"Tool invoked: {action.name} with arguments: {tool_input}")
                 
+                '''
+                # Validate required parameters
+                missing_params = [param.name for param in action.parameters if param.required and param.name not in tool_input]
+                if missing_params:
+                    raise ValueError(f"Missing required parameters for {action.name}: {', '.join(missing_params)}")'''
+                
                 missing_params = [param.name for param in action.parameters if param.required and param.name not in tool_input]
                 all_required_params = [param.name for param in action.parameters if param.required]
                 

@@ -115,6 +115,19 @@ class ConnectionManager:
         except Exception as e:
             logging.error(f"\nAn error occurred: {e}")
             return False
+    
+    def get_connection(self, connection_name: str) -> Optional[BaseConnection]:
+        """Get a specific connection by name"""
+        try:
+            return self.connections[connection_name]
+        except KeyError:
+            logging.error(
+                "\nUnknown connection. Try 'list-connections' to see all supported connections."
+            )
+            return None
+        except Exception as e:
+            logging.error(f"\nAn error occurred: {e}")
+            return None
 
     def list_connections(self) -> None:
         """List all available connections and their status"""
@@ -124,6 +137,11 @@ class ConnectionManager:
                 "✅ Configured" if connection.is_configured() else "❌ Not Configured"
             )
             logging.info(f"- {name}: {status}")
+        #return all connections
+        return self.connections
+    
+    def get_connections(self):
+        return self.connections
 
     def list_actions(self, connection_name: str) -> None:
         """List all available actions for a specific connection"""
