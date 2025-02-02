@@ -106,13 +106,6 @@
     {"name": "reply-to-tweet", "weight": 1},
     {"name": "like-tweet", "weight": 1}
   ],
-  "langchain_config": {
-    "use_langchain": true,
-    "executor_model_provider": "openai",
-    "driver_model": "gpt-3.5-turbo",
-    "character_model": "gpt-3.5-turbo",
-    "executor_model": "gpt-3.5-turbo"
-  },
   "use_time_based_weights": false,
   "time_based_multipliers": {
     "tweet_night_multiplier": 0.4,
