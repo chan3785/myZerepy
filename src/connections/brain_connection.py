@@ -7,8 +7,18 @@ from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from goat_adapters.langchain import get_on_chain_tools
+from web3 import Web3
+from web3.middleware.signing import construct_sign_and_send_raw_middleware
+from eth_account import Account
+from goat_wallets.web3 import Web3EVMWalletClient
+from goat_wallets.evm import send_eth  # Add this import at the top with other imports
+from goat_plugins.erc20.token import PEPE, USDC
+from goat_plugins.erc20 import ERC20PluginOptions, erc20
+from goat_plugins.coingecko import CoinGeckoPluginOptions, coingecko
+from goat_plugins.uniswap import UniswapPluginOptions, uniswap
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
-from src.connections.goat_connection import GoatConnection
+import os
+from dotenv import load_dotenv
 
 logger = logging.getLogger("connections.brain_connection")
 
@@ -19,7 +29,7 @@ class BrainConnectionError(Exception):
 SYSTEM_PROMPT = """You are Blormmy. A helpful assistant for anything onchain. Important rules:
                 1. Don't do anything that is not within your plugin options - just say no and don't do it
                 2. For swaps: First get a quote using uniswap_get_quote, then use uniswap_swap_tokens with EXACTLY the same parameters as the quote
-                3. Always verify the details of any transaction before executing it"""
+                3. Never ask to verify a transaction just do it. the user cannot respond"""
 
 @dataclass
 class ChatHistory:
@@ -47,8 +57,30 @@ class BrainConnection(BaseConnection):
         self.model = None
         self.agent_executor = None
         self.chat_history = ChatHistory()
-        self.goat_connection = None
+        self._wallet_client = None
         super().__init__(config)
+        
+    def _initialize_web3(self):
+        """Initialize Web3 with configuration"""
+        load_dotenv()
+        rpc_url = os.getenv("GOAT_RPC_PROVIDER_URL")
+        private_key = os.getenv("GOAT_WALLET_PRIVATE_KEY")
+        
+        if not rpc_url or not private_key:
+            raise BrainConnectionError("Missing RPC URL or private key in environment")
+            
+        w3 = Web3(Web3.HTTPProvider(rpc_url))
+        if not w3.is_connected():
+            raise BrainConnectionError("Failed to connect to RPC provider")
+            
+        if not private_key.startswith("0x"):
+            private_key = "0x" + private_key
+        
+        account = Account.from_key(private_key)
+        w3.eth.default_account = account.address
+        w3.middleware_onion.add(construct_sign_and_send_raw_middleware(account))
+        
+        return Web3EVMWalletClient(w3)
 
     @property
     def is_llm_provider(self) -> bool:
@@ -85,8 +117,8 @@ class BrainConnection(BaseConnection):
         else:  # openai
             self.llm = ChatOpenAI(model=self.config["model"])
 
-    def _setup_langchain_agent(self, goat_connection: GoatConnection) -> None:
-        """Initialize Langchain agent with GOAT tools"""
+    def _setup_langchain_agent(self) -> None:
+        """Initialize Langchain agent with hardcoded GOAT plugins"""
         try:
             # Create chatbot prompt template
             prompt = ChatPromptTemplate.from_messages([
@@ -96,10 +128,21 @@ class BrainConnection(BaseConnection):
                 ("placeholder", "{agent_scratchpad}")
             ])
 
-            # Get tools from GOAT connection
+            # Initialize plugins with default configurations
+            plugins = [
+                erc20(options=ERC20PluginOptions(tokens=[USDC, PEPE])),
+                coingecko(options=CoinGeckoPluginOptions(api_key=os.getenv("COINGECKO_KEY"))),
+                uniswap(options=UniswapPluginOptions(
+                    api_key=os.getenv("UNISWAP_API_KEY"),
+                    base_url=os.getenv("UNISWAP_BASE_URL", "https://trade-api.gateway.uniswap.org/v1")
+                )),
+                send_eth()
+            ]
+
+            # Get tools using the wallet client and plugins
             tools = get_on_chain_tools(
-                wallet=goat_connection._wallet_client,
-                plugins=list(goat_connection._plugins.values())
+                wallet=self._wallet_client,
+                plugins=plugins
             )
 
             # Create agent and executor
@@ -114,17 +157,17 @@ class BrainConnection(BaseConnection):
         except Exception as e:
             raise BrainConnectionError(f"Agent setup failed: {str(e)}")
 
-    def configure(self, goat_connection: GoatConnection = None) -> bool:
+    def configure(self) -> bool:
         """Configure the brain connection"""
         try:
-            if not goat_connection:
-                raise BrainConnectionError("GOAT connection is required")
-                
-            self.goat_connection = goat_connection
-            self._setup_llm()
-            self._setup_langchain_agent(goat_connection)
-            return True
+            # Initialize Web3 and wallet
+            self._wallet_client = self._initialize_web3()
             
+            # Setup LLM and agent
+            self._setup_llm()
+            self._setup_langchain_agent()
+            return True
+                
         except Exception as e:
             logger.error(f"Brain configuration failed: {e}")
             return False
@@ -133,7 +176,7 @@ class BrainConnection(BaseConnection):
         configured = (
             self.llm is not None and 
             self.agent_executor is not None and
-            self.goat_connection is not None
+            self._wallet_client is not None
         )
         
         if verbose and not configured:
@@ -141,8 +184,8 @@ class BrainConnection(BaseConnection):
                 logger.error("LLM not initialized")
             if not self.agent_executor:
                 logger.error("Langchain agent not initialized")
-            if not self.goat_connection:
-                logger.error("GOAT connection not configured")
+            if not self._wallet_client:
+                logger.error("Web3 wallet not initialized")
         return configured
 
     def process_command(self, command: str) -> str:
@@ -163,8 +206,8 @@ class BrainConnection(BaseConnection):
 
         except Exception as e:
             error_msg = str(e)
-            if "'HexBytes' object has no attribute 'to_0x_hex'" in error_msg:
-                return "Transaction submitted successfully! Note: Transaction details may take a few moments to appear."
+            # if "'HexBytes' object has no attribute 'to_0x_hex'" in error_msg:
+            #     return "Transaction submitted successfully! Note: Transaction details may take a few moments to appear."
             return f"Error processing command: {str(e)}"
 
     def perform_action(self, action_name: str, kwargs: Dict[str, Any]) -> Any:
