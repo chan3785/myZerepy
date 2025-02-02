@@ -69,10 +69,21 @@ class BrainConnection(BaseConnection):
             if not self.goat_connection._wallet_client:
                 raise BrainConnectionError("Wallet client not initialized")
             
+            w3 = self.goat_connection._wallet_client._web3
+            max_priority_fee = w3.eth.max_priority_fee
+            max_fee = w3.eth.gas_price
+            w3.eth.default_transaction_params = {
+                'maxPriorityFeePerGas': max_priority_fee,
+                'maxFeePerGas': max_fee
+            }
+
             # Create chatbot and prompt template
             llm = ChatAnthropic(model=self.model)
             prompt = ChatPromptTemplate.from_messages([
-                ("system", "You are Blormmy. A helpful assistant for anything onchain. dont do anything that is not within your plugin options. just say no and dont do it"),
+                ("system", """You are Blormmy. A helpful assistant for anything onchain. Important rules:
+                1. Don't do anything that is not within your plugin options - just say no and don't do it
+                2. For swaps: First get a quote using uniswap_get_quote, then use uniswap_swap_tokens with EXACTLY the same parameters as the quote - do not get a new quote
+                3. Always verify the details of any transaction before executing it"""),
                 ("placeholder", "{chat_history}"),
                 ("human", "{input}"),
                 ("placeholder", "{agent_scratchpad}")
