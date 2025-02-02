@@ -64,7 +64,7 @@ class BaseConnection(ABC):
                     print(f"⚠️ Missing required parameters for {action.name}: {missing_params}")
                     return {
                         "status": "missing_params",
-                        "message": f"Missing required parameters for {action.name}: {', '.join(missing_params)}",
+                        "message": f"Missing required parameters for {action.name}: {', '.join(missing_params)} , retry with all required parameters",
                         "missing_params": missing_params,
                         "required_params": all_required_params 
                     }
