@@ -7,8 +7,8 @@ load_dotenv()
 
 def test_brain():
     config = {
-        "llm_provider": "openai",
-        "model": "gpt-4o",
+        "llm_provider": "anthropic",
+        "model": "claude-3-5-sonnet-20241022",
         "plugins": [
             {
                 "name": "coingecko",
@@ -42,7 +42,7 @@ def test_brain():
     #     "send .0001 of native token to 0xFF6CBf6830C47F683aC3227baD83c0BE5397A08F"
     # ]
 
-    commands = ["help me swap .0005 eth for usdc "]
+    commands = ["help me swap .01 eth for usdc on base"]
 
     for cmd in commands:
         print(f"\nTesting: {cmd}")

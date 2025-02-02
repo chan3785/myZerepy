@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from typing import Dict, Any, List
 from dataclasses import dataclass
 from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
@@ -69,7 +70,7 @@ class BrainConnection(BaseConnection):
                 raise BrainConnectionError("Wallet client not initialized")
             
             # Create chatbot and prompt template
-            llm = ChatOpenAI(model=self.model)
+            llm = ChatAnthropic(model=self.model)
             prompt = ChatPromptTemplate.from_messages([
                 ("system", "You are Blormmy. A helpful assistant for anything onchain. dont do anything that is not within your plugin options. just say no and dont do it"),
                 ("placeholder", "{chat_history}"),

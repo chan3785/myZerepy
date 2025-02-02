@@ -107,8 +107,8 @@
     },
     {
       "name": "brain",
-      "model": "gpt-3.5-turbo",
-      "llm_provider": "openai",
+      "model": "claude-3-5-sonnet-20241022",
+      "llm_provider": "anthropic",
       "plugins": [
         {
           "name": "coingecko",
