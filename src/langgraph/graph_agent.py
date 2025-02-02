@@ -109,7 +109,7 @@ class GraphAgent:
             return 
 
         for action in action_plan:
-            print(f"Executing action: {action}")
+            print(f"\nExecuting action: {action}")
             state = self.executor_agent.invoke_executor(action, state)
         return state
 
