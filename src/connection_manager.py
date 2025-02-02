@@ -171,6 +171,17 @@ class ConnectionManager:
             )
         except Exception as e:
             logging.error(f"\nAn error occurred: {e}")
+    
+    def get_actions(self, connection_name: str) -> Dict[str, Any]:
+        try:
+            connection = self.connections[connection_name]
+            return connection.actions
+        except KeyError:
+            logging.error(
+                "\nUnknown connection. Try 'list-connections' to see all supported connections."
+            )
+        except Exception as e:
+            logging.error(f"\nAn error occurred: {e}")
 
     def perform_action(
         self, connection_name: str, action_name: str, params: List[Any]

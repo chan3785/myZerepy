@@ -82,10 +82,18 @@ class GraphAgent:
     def division_step(self, state: AgentState):
         print("\n=== DIVISION STEP ===")
         print(f"Creating action plan for task: {state['current_task']}")
-        division_prompt = (f"Based on the the given task and available actions, generate an action plan for the agent. Only respond with the list of steps needed (with the corresponding actions mentioned), and put each step on a new line.Only include actions that involve making requests—do not include actions like editing dialog boxes, clicking buttons, or other UI interactions. Assume the agent has the necessary connections to perform these actions, so do not include any steps related to establishing connections\n\n"
-                           f"TASK:\n{state['current_task']}"
-                           f"\n\nAVAILABLE CONNECTIONS:\n\n{chr(10).join(connection for connection in self.connections)}") #TODDO: provide all available actions instead of connections
-    
+        division_prompt = (f"Based on the given task and available actions, generate an action plan for the agent. Only respond with the list of steps needed (with the corresponding actions mentioned), and put each step on a new line. Only include actions that involve making requests—do not include actions like editing dialog boxes, clicking buttons, or other UI interactions. Assume the agent has the necessary connections to perform these actions, so do not include any steps related to establishing connections\n\n"
+                   f"TASK:\n{state['current_task']}"
+                   f"\n\nAVAILABLE ACTIONS FOR EACH CONNECTION:\n\n" +
+                   "\n\n".join(
+                       f"{connection}:\n" +
+                       ", ".join(
+                           f"{action} ({', '.join([param.name + ' (' + ('required' if param.required else 'optional') + ')' for param in action_obj.parameters])})"
+                           for action, action_obj in self.connection_manager.get_actions(connection).items()
+                       )
+                       for connection in self.connections
+                   )
+                  )
         action_plan_text = self.driver_llm.invoke(division_prompt).content
         action_plan = action_plan_text.split("\n")
         print(f"Generated action plan: {action_plan}")

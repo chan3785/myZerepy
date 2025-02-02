@@ -9,6 +9,7 @@ from pathlib import Path
 import json
 
 #This class is responsible for setting up langgraph agents
+#Todo : Build and pass system prompt to the agent
 
 class LangGraphAgent:
     def __init__(self, agent_name: str, provide_tools: bool, connection_manager=None):
@@ -131,7 +132,7 @@ class LangGraphAgent:
                     ),
                 }
                 ],
-                "execution_log": state["execution_log"]  
+                "execution_log": state["execution_log"]  #might not need to include this because it's already in the content
             }
          
         response = self.langgraphAgent.invoke(formatted_input)    
