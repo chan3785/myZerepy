@@ -64,10 +64,10 @@
        "engagement_day_multiplier": 1.5
      },
      "langchain_config": {
-        "use_langchain": true,
-        "executor_model_provider": "openai", 
-        "driver_model": "gpt-3.5-turbo",
-        "character_model": "gpt-3.5-turbo",
-        "executor_model": "gpt-3.5-turbo"
-      }
+      "use_langchain": true,
+      "provider": "anthropic", 
+      "driver_model": "claude-3-5-sonnet-20241022",
+      "character_model": "claude-3-5-sonnet-20241022",
+      "executor_model": "claude-3-5-sonnet-20241022"
+    }
    }

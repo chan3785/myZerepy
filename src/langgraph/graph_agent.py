@@ -92,8 +92,8 @@ class GraphAgent:
                            for action, action_obj in self.connection_manager.get_actions(connection).items()
                        )
                        for connection in self.connections
-                   )
-                  )
+                   )+
+                   f"\nExample:\n Task: Make a funny tweet\n\nAction Plan:\n1.Generate a witty joke or humorous statement using OpenAI by leveraging the generate-text function with an appropriate system prompt and input prompt. 2. Post the generated joke on Twitter using the post-tweet function, setting the message parameter to the joke from step 1.")
         action_plan_text = self.driver_llm.invoke(division_prompt).content
         action_plan = action_plan_text.split("\n")
         print(f"Generated action plan: {action_plan}")
