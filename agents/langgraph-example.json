@@ -65,9 +65,9 @@
      },
      "langchain_config": {
       "use_langchain": true,
-      "provider": "anthropic", 
-      "driver_model": "claude-3-5-sonnet-20241022",
-      "character_model": "claude-3-5-sonnet-20241022",
-      "executor_model": "claude-3-5-sonnet-20241022"
+      "provider": "openai", 
+      "driver_model": "gpt-4o-mini",
+      "character_model": "gpt-4o-mini",
+      "executor_model": "gpt-4o-mini"
     }
    }
