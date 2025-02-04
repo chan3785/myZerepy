@@ -89,27 +89,38 @@ class LangGraphAgent:
 
         for i, message in enumerate(messages):
             if isinstance(message, AIMessage):
-                last_tool_execution = self._extract_tool_execution(message, messages, i)
+                tool_executions = self._extract_tool_executions(message, messages, i)
+                if tool_executions:
+                    last_tool_execution = tool_executions
 
         if last_tool_execution:
-            print("Tool Call Result : ", last_tool_execution["result"])
+            print("Tool Call Result:", last_tool_execution["result"])
             state["execution_log"].append(last_tool_execution)
 
         return state
 
-    def _extract_tool_execution(self, message, messages, index):
+    def _extract_tool_executions(self, message, messages, index):
         tool_calls = message.additional_kwargs.get("tool_calls", [])
+        
         for tool_call in tool_calls:
-            tool_name = tool_call.get("function", {}).get("name") or tool_call.get("name")
+            tool_name = self._get_tool_name(tool_call)
             tool_parameters = self._parse_tool_parameters(tool_call)
             tool_result, tool_status = self._find_tool_result(messages, index, tool_call)
-            return {
-                "action": "tool_execution",
-                "tool": tool_name,
-                "parameters": tool_parameters,
-                "result": tool_result,
-                "status": tool_status
-            }
+
+            if tool_name:  #if we have a valid tool call
+                return {
+                    "action": "tool_execution",
+                    "tool": tool_name,
+                    "parameters": tool_parameters,
+                    "result": tool_result,
+                    "status": tool_status
+                }
+        return None
+
+    def _get_tool_name(self, tool_call):
+        """Extract tool name from tool call."""
+        function_info = tool_call.get("function", {})
+        return function_info.get("name") or tool_call.get("name")
 
     def _parse_tool_parameters(self, tool_call):
         args = tool_call.get("function", {}).get("arguments")
@@ -120,15 +131,20 @@ class LangGraphAgent:
                 return {"raw_args": args}
         return tool_call.get("args", {})
 
-    def _find_tool_result(self, messages, index, tool_call):
+    def _find_tool_result(self, messages, start_index, tool_call):
         tool_result = None
         tool_status = "pending"
-        for next_msg in messages[index:]:
-            if isinstance(next_msg, ToolMessage) and next_msg.tool_call_id == tool_call.get("id"):
-                return next_msg.content, next_msg.status
-        for next_msg in messages[index:]:
-            if isinstance(next_msg, AIMessage) and next_msg.content:
-                return next_msg.content, tool_status
+
+        # First look for a ToolMessage with matching tool_call_id
+        for msg in messages[start_index:]:
+            if isinstance(msg, ToolMessage) and msg.tool_call_id == tool_call.get("id"):
+                return msg.content, msg.status
+
+        # If no ToolMessage found, look for next AIMessage with content
+        for msg in messages[start_index:]:
+            if isinstance(msg, AIMessage) and msg.content:
+                return msg.content, tool_status
+
         return tool_result, tool_status
 
     def invoke_executor(self, user_input: str, state: dict):
