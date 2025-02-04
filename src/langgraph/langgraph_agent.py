@@ -86,6 +86,15 @@ class LangGraphAgent:
 
         messages = response.get("messages", [])
         last_tool_execution = None
+        final_response = None
+
+        try:
+            final_response = next(
+                msg.content for msg in reversed(messages)
+                if msg.content and isinstance(msg, AIMessage)
+            )
+        except StopIteration:
+            final_response = None
 
         for i, message in enumerate(messages):
             if isinstance(message, AIMessage):
@@ -94,7 +103,10 @@ class LangGraphAgent:
                     last_tool_execution = tool_executions
 
         if last_tool_execution:
-            print("Tool Call Result:", last_tool_execution["result"])
+            if (final_response): #log final response
+                print("Final Response:", final_response)
+                last_tool_execution["final_response"] = final_response
+
             state["execution_log"].append(last_tool_execution)
 
         return state
@@ -155,6 +167,7 @@ class LangGraphAgent:
                     "content": (
                         f"Before executing the following action, consider the previous execution log:\n\n"
                         f"EXECUTION LOG:\n{json.dumps(state.get('execution_log', []), indent=2)}\n\n"
+                        f"Refer to the 'final_response' field in the tool execution log to quickly see the final response from the agent\n\n"
                         f"Now, execute this action based on the prior results: {user_input}"
                     ),
                 }
