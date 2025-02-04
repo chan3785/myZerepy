@@ -12,7 +12,7 @@ class AgentState(TypedDict):
     action_plan: list
     action_log: list
     task_log: list
-    
+
 class GraphAgent:
     def __init__(self, agent_name: str):
         # Load agent configuration
@@ -42,24 +42,7 @@ class GraphAgent:
         self.graph_builder.add_edge("division", "execution")
         self.graph_builder.add_edge("execution", "evaluation")
         self.graph_builder.add_edge("evaluation", END)
-
-        # Load LLMs
-        '''self.llms = self.config_dict.get("llms", [])
-        for llm in self.llms:
-            if llm["model_provider"] == "openai":
-                llm["object"] = ChatOpenAI(model=llm["model"], api_key=OPENAI_API_KEY)
-
-            # Store special LLMs as instance variables
-            if llm["name"] == "driver":
-                self.driver_llm = llm["object"]
-            elif llm["name"] == "character":
-                self.character_llm = llm["object"]
-        
-        llm = {}
-        llm["object"] = ChatOpenAI(model="gpt-4", api_key=OPENAI_API_KEY)
-        self.driver_llm = llm["object"]
-        self.character_llm = llm["object"]'''
-       
+ 
         #set up agents 
         self.driver_llm = LangGraphAgent(agent_name, False, self.connection_manager)
         self.character_llm = LangGraphAgent(agent_name, False, self.connection_manager)
