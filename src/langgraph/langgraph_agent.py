@@ -69,7 +69,11 @@ class LangGraphAgent:
         return tools
 
     def invoke(self, user_input: str):
-        return self.langgraphAgent.invoke(user_input)
+        if self.provideTools:
+            formatted_input = {"messages": [ {"role": "user","content": user_input}]}
+            return self.langgraphAgent.invoke(formatted_input)
+        else:
+            return self.langgraphAgent.invoke(user_input)
 
     def invoke_chat(self, messages: list[dict]):
         state = {"messages": messages}
@@ -80,8 +84,8 @@ class LangGraphAgent:
         )
         return response
 
-    def _process_response(self, response, state):
-        
+    def process_response(self, response, state):
+
         messages = response.get("messages", [])
         last_tool_execution = None
         final_response = None
@@ -157,22 +161,4 @@ class LangGraphAgent:
 
         return tool_result, tool_status
 
-    def invoke_executor(self, user_input: str, state: dict):
-        formatted_input = {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": (
-                        f"Before executing the following action, consider the previous execution log:\n\n"
-                        f"ACTION LOG:\n{json.dumps(state.get('action_log', []), indent=2)}\n\n"
-                        f"Refer to the 'final_response' field in the tool action log to quickly see the final response from the agent\n\n"
-                        f"Now, execute this action based on the prior results: {user_input}"
-                    ),
-                }
-            ]
-        }
-
-        response = self.langgraphAgent.invoke(formatted_input)
-        state = self._process_response(response, state)
-        return state
 

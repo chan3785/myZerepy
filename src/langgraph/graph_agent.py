@@ -93,8 +93,16 @@ class GraphAgent:
             return 
 
         for action in action_plan:
+
             print(f"\nExecuting action: {action}")
-            state = self.executor_agent.invoke_executor(action, state)
+            execution_prompt = (f"Before executing the following action, consider the previous action log:\n\n"
+                        f"ACTION LOG:\n{state['action_log']}\n\n"
+                        f"Refer to the 'final_response' field in the tool action log to quickly see the final response from the agent\n\n"
+                        f"Now, execute this action based on the prior results: {action}")
+            
+            response = self.executor_agent.invoke(execution_prompt)
+            state = self.executor_agent.process_response(response, state)
+
         
         return {"action_log": state["action_log"]}
 
