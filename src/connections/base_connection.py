@@ -70,11 +70,10 @@ class BaseConnection(ABC):
             tool_wrapper.__doc__ = action.description
             
             tool_wrapper.__annotations__ = {
-                param.name: param.type 
-                for param in action.parameters
-                if param.required
-            }
-
+                            param.name: {'type': param.type,'description': param.description}               
+                            for param in action.parameters
+                                if param.required
+                            }
             return tool_wrapper
 
     @property

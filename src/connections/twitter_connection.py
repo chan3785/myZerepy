@@ -48,13 +48,13 @@ class TwitterConnection(BaseConnection):
     def register_actions(self) -> None:
         """Register available Twitter actions"""
         self.actions = {
-            "get-latest-tweets": Action(
-                name="get-latest-tweets",
+            "get-latest-tweets-from-user": Action(
+                name="get-latest-tweets-from-user",
                 parameters=[
                     ActionParameter("username", True, str, "Twitter username to get tweets from"),
                     ActionParameter("count", False, int, "Number of tweets to retrieve")
                 ],
-                description="Get the latest tweets from a user"
+                description="Get the latest tweets by a specific user"
             ),
             "post-tweet": Action(
                 name="post-tweet",
@@ -68,7 +68,7 @@ class TwitterConnection(BaseConnection):
                 parameters=[
                     ActionParameter("count", False, int, "Number of tweets to read from timeline")
                 ],
-                description="Read tweets from user's timeline"
+                description="Read tweets on the timeline"
             ),
             "like-tweet": Action(
                 name="like-tweet",
@@ -409,7 +409,7 @@ class TwitterConnection(BaseConnection):
         logger.debug(f"Retrieved {len(tweets)} tweets")
         return tweets
 
-    def get_latest_tweets(self,
+    def get_latest_tweets_from_user(self,
                           username: str,
                           count: int = 10,
                           **kwargs) -> list:
