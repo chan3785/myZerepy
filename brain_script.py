@@ -39,8 +39,10 @@ def test_brain(agent_name: str = "example"):
             # "what's my wallet address",
             # "get me info about bitcoin",
             # "check my eth balance",
-            "please send .001 native token to 0xFF6CBf6830C47F683aC3227baD83c0BE5397A08F",
-            "help me swap 0.01 eth for usdc"
+            # "what actions can you do",
+            # "please send .001 native token to 0xFF6CBf6830C47F683aC3227baD83c0BE5397A08F",
+            "help me swap 3 of 0x833589fcd6edb6e08f4c7c32d4f71b54bda02913 for 0x2Da56AcB9Ea78330f947bD57C54119Debda7AF71"
+            # "get me the token price of pepe using the uniswap plugin"
         ]
 
         for cmd in test_commands:

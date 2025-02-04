@@ -1472,13 +1472,13 @@ typing-extensions = ">=4.12.2,<5.0.0"
 
 [[package]]
 name = "goat-sdk-wallet-web3"
-version = "0.1.1"
+version = "0.1.2"
 description = "Goat SDK Web3 wallet implementation"
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "goat_sdk_wallet_web3-0.1.1-py3-none-any.whl", hash = "sha256:e2faaf28e360379caaf8846a48e4682a636fa1e656fc443816eb32f78755bc68"},
-    {file = "goat_sdk_wallet_web3-0.1.1.tar.gz", hash = "sha256:b873e9741d5ede11e6da5655f9e5512d630e558b52593487f4be346cd9506140"},
+    {file = "goat_sdk_wallet_web3-0.1.2-py3-none-any.whl", hash = "sha256:3feba2f39c2d09a043fe7beae94ecd6792b6bd5a6f48df7f597bf573e7b5c1d8"},
+    {file = "goat_sdk_wallet_web3-0.1.2.tar.gz", hash = "sha256:7de23a3d60e9448364aeba1746c6c1a5573e86da226726b6118c374c72e768c9"},
 ]
 
 [package.dependencies]
@@ -3967,4 +3967,4 @@ server = ["fastapi", "requests", "uvicorn"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "686cc1abcd5ca1071e29ef077a8e2455de34d3b980c5e8259f7d03cd56eb190c"
+content-hash = "6ef7e66656916b79660983f6ee89c0a645f3143d47766361420533d8ed5c7a1d"

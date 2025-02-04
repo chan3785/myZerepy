@@ -11,7 +11,7 @@ from web3 import Web3
 from web3.middleware.signing import construct_sign_and_send_raw_middleware
 from eth_account import Account
 from goat_wallets.web3 import Web3EVMWalletClient
-from goat_wallets.evm import send_eth  # Add this import at the top with other imports
+from goat_wallets.evm import send_eth  
 from goat_plugins.erc20.token import PEPE, USDC
 from goat_plugins.erc20 import ERC20PluginOptions, erc20
 from goat_plugins.coingecko import CoinGeckoPluginOptions, coingecko
@@ -29,7 +29,8 @@ class BrainConnectionError(Exception):
 SYSTEM_PROMPT = """You are Blormmy. A helpful assistant for anything onchain. Important rules:
                 1. Don't do anything that is not within your plugin options - just say no and don't do it
                 2. For swaps: First get a quote using uniswap_get_quote, then use uniswap_swap_tokens with EXACTLY the same parameters as the quote
-                3. Never ask to verify a transaction just do it. the user cannot respond"""
+                3. Never ask to verify a transaction just do it. the user cannot respond. skip checking token approval
+                4. when you see a token whose contract address you do not know, use the coin gecko plugin instead of the erc20 plugin to look it up"""
 
 @dataclass
 class ChatHistory:
@@ -134,7 +135,7 @@ class BrainConnection(BaseConnection):
                 coingecko(options=CoinGeckoPluginOptions(api_key=os.getenv("COINGECKO_KEY"))),
                 uniswap(options=UniswapPluginOptions(
                     api_key=os.getenv("UNISWAP_API_KEY"),
-                    base_url=os.getenv("UNISWAP_BASE_URL", "https://trade-api.gateway.uniswap.org/v1")
+                    base_url=os.getenv("UNISWAP_BASE_URL")
                 )),
                 send_eth()
             ]
@@ -207,7 +208,7 @@ class BrainConnection(BaseConnection):
         except Exception as e:
             error_msg = str(e)
             # if "'HexBytes' object has no attribute 'to_0x_hex'" in error_msg:
-            #     return "Transaction submitted successfully! Note: Transaction details may take a few moments to appear."
+            #     return "hexbytes bug message but maybe went through"
             return f"Error processing command: {str(e)}"
 
     def perform_action(self, action_name: str, kwargs: Dict[str, Any]) -> Any:
