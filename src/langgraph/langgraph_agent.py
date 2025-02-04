@@ -81,8 +81,9 @@ class LangGraphAgent:
         return response
 
     def _process_response(self, response, state):
-        if "execution_log" not in state:
-            state["execution_log"] = []
+        
+        if "action_log" not in state:
+            state["action_log"] = []
 
         messages = response.get("messages", [])
         last_tool_execution = None
@@ -107,7 +108,7 @@ class LangGraphAgent:
                 print("Final Response:", final_response)
                 last_tool_execution["final_response"] = final_response
 
-            state["execution_log"].append(last_tool_execution)
+            state["action_log"].append(last_tool_execution)
 
         return state
 
@@ -166,13 +167,12 @@ class LangGraphAgent:
                     "role": "user",
                     "content": (
                         f"Before executing the following action, consider the previous execution log:\n\n"
-                        f"EXECUTION LOG:\n{json.dumps(state.get('execution_log', []), indent=2)}\n\n"
-                        f"Refer to the 'final_response' field in the tool execution log to quickly see the final response from the agent\n\n"
+                        f"ACTION LOG:\n{json.dumps(state.get('action_log', []), indent=2)}\n\n"
+                        f"Refer to the 'final_response' field in the tool action log to quickly see the final response from the agent\n\n"
                         f"Now, execute this action based on the prior results: {user_input}"
                     ),
                 }
-            ],
-            "execution_log": state["execution_log"]
+            ]
         }
 
         response = self.langgraphAgent.invoke(formatted_input)

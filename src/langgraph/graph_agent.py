@@ -11,7 +11,9 @@ class AgentState(TypedDict):
     current_task: str | None
     action_plan: list
     current_action: str | None
-    execution_log: list
+    action_log: list
+    task_log: list
+    #execution_log: list
 
 class GraphAgent:
     def __init__(self, agent_name: str):
@@ -75,7 +77,7 @@ class GraphAgent:
     def determination_step(self, state: AgentState):
         print("\n=== DETERMINATION STEP ===")
         print(f"Determining task from context: {state['context']}")
-        task = "Make a funny tweet"
+        task = "Make some tweet about rockets"
         print(f"Determined task: {task}")
         return {"current_task": task}
 
@@ -93,7 +95,8 @@ class GraphAgent:
                        )
                        for connection in self.connections
                    )+
-                   f"\nExample:\n Task: Make a funny tweet\n\nAction Plan:\n1.Generate a witty joke or humorous statement using OpenAI by leveraging the generate-text function with an appropriate system prompt and input prompt. 2. Post the generated joke on Twitter using the post-tweet function, setting the message parameter to the joke from step 1.")
+                   f"\nExample:\n Task: Make a funny tweet\n\nAction Plan:\n1.Generate a witty joke or humorous statement using OpenAI by leveraging the generate-text function with an appropriate system prompt and input prompt. 2. Post the generated joke on Twitter using the post-tweet function, setting the message parameter to the joke from step 1."+
+                   f"\nDo not combine multiple actions into one step. Each step should represent a single action.")
         action_plan_text = self.driver_llm.invoke(division_prompt).content
         action_plan = action_plan_text.split("\n")
         print(f"Generated action plan: {action_plan}")
@@ -111,11 +114,32 @@ class GraphAgent:
         for action in action_plan:
             print(f"\nExecuting action: {action}")
             state = self.executor_agent.invoke_executor(action, state)
-        return state
+        
+        return {"action_log": state["action_log"]}
 
-    def evaluation_step(self, state: AgentState):
+    def evaluation_step(self, state: AgentState): #Convert action_logs to a summary of what the agent did , and then pass it to task_log
+       
+        if ("task_log" not in state):
+            state["task_log"] = []
+
         print("\n=== EVALUATION STEP ===")
-        print(f"Evaluating execution log: {state['execution_log']}")
+        action_log = state["action_log"]
+        evaluation_prompt = (f"Based on the action log, provide a summary of what the agent did based on the main task given. Only include the most important actions and the results of those actions. Do not include any actions that are irrelevant to the task or that did not produce a meaningful result.\n\n"
+                   f"Task:\n{state['current_task']}"
+                   f"Action Log:\n" +
+                   "\n".join(
+                       f"{action['action']}:\n" +
+                       f"Result: {action['result']}"
+                       for action in action_log
+                   )+
+                   f"\nExample Generated summary:\n Task: Make a funny tweet:\n1. Generated a witty joke using OpenAI : 'funny tweet generated'. 2. Posted 'funny tweet generated' joke on Twitter."
+                )
+        generated_task_log = self.driver_llm.invoke(evaluation_prompt).content
+        print(f"Generated task log:\n{generated_task_log}")
+        state["action_plan"] = []
+        state["action_log"] = [] 
+        state["task_log"].append(generated_task_log)
+        state["task_log"] = state["task_log"][-3:]  #trim to the last 3 task logs
         return state
 
     def run(self):
