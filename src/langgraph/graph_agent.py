@@ -10,11 +10,9 @@ class AgentState(TypedDict):
     context: dict
     current_task: str | None
     action_plan: list
-    current_action: str | None
     action_log: list
     task_log: list
-    #execution_log: list
-
+    
 class GraphAgent:
     def __init__(self, agent_name: str):
         # Load agent configuration
@@ -118,10 +116,6 @@ class GraphAgent:
         return {"action_log": state["action_log"]}
 
     def evaluation_step(self, state: AgentState): #Convert action_logs to a summary of what the agent did , and then pass it to task_log
-       
-        if ("task_log" not in state):
-            state["task_log"] = []
-
         print("\n=== EVALUATION STEP ===")
         action_log = state["action_log"]
         evaluation_prompt = (f"Based on the action log, provide a summary of what the agent did based on the main task given. Only include the most important actions and the results of those actions. Do not include any actions that are irrelevant to the task or that did not produce a meaningful result.\n\n"
@@ -151,8 +145,8 @@ class GraphAgent:
             "context": {},
             "current_task": "Increase Twitter followers",
             "action_plan": [],
-            "current_action": None,
-            "execution_log": []
+            "action_log": [],
+            "task_log": []
         }
 
         print(f"Initial state: {initial_state}")

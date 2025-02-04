@@ -82,9 +82,6 @@ class LangGraphAgent:
 
     def _process_response(self, response, state):
         
-        if "action_log" not in state:
-            state["action_log"] = []
-
         messages = response.get("messages", [])
         last_tool_execution = None
         final_response = None
