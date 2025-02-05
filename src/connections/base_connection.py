@@ -87,8 +87,11 @@ class BaseConnection(ABC):
             method_name = action.name.replace('-', '_')
             method = getattr(self, method_name)
             return method(**tool_input)
-
-        tool_wrapper.__name__ = action.name
+        
+        connection_name = self.__class__.__name__.lower().replace('connection', '')
+        connection_prefixed_name = f"{connection_name}_{action.name}"
+    
+        tool_wrapper.__name__ = connection_prefixed_name
         tool_wrapper.__doc__ = action.description
 
         tool_wrapper.__annotations__ = {
