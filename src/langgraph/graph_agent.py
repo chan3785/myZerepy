@@ -8,6 +8,7 @@ from pathlib import Path
 
 class AgentState(TypedDict):
     context: dict
+    context_summary: str
     current_task: str | None
     action_plan: list
     action_log: list
@@ -53,12 +54,18 @@ class GraphAgent:
     def observation_step(self, state: AgentState):
         print("\n=== OBSERVATION STEP ===")
         print(f"Current Context: {state['context']}")
-        return {"context": state["context"]}
+        # TODO: USE LLM TO SUMMARIZE CONTEXT
+        context_summary = "There is currently no additional context available."
+        return {"context_summary": context_summary}
 
     def determination_step(self, state: AgentState):
         print("\n=== DETERMINATION STEP ===")
-        print(f"Determining task from context: {state['context']}")
-        task = "Make some tweet about rockets"
+        print(f"Determining task from context: {state['context_summary']}")
+        determination_prompt = (f"Based on the given context and available actions, generate a complex task that you desire to perform. Only respond with the task, and do not include any other text in your response. Your task can involve multiple chained actions. You do not need to provide any reasoning for the task. If you are given context, you may choose whether or not to use it. If you do not have context, you must still choose a task to perform.\n\n"
+                           f"CONTEXT SUMMARY:\n{state['context_summary']}"
+                           f"\n\nAVAILABLE ACTIONS FOR EACH CONNECTION:\n\n" +
+                           "\n\n".join(connection.__str__() for connection in self.connections.values()))
+        task = self.character_llm.invoke(determination_prompt).content
         print(f"Determined task: {task}")
         return {"current_task": task}
 
@@ -86,20 +93,17 @@ class GraphAgent:
             return 
 
         for action in action_plan:
-
             print(f"\nExecuting action: {action}")
             execution_prompt = (f"Before executing the following action, consider the previous action log:\n\n"
                         f"ACTION LOG:\n{state['action_log']}\n\n"
                         f"Refer to the 'final_response' field in the tool action log to quickly see the final response from the agent\n\n"
                         f"Now, execute this action based on the prior results: {action}")
-            
             response = self.executor_agent.invoke(execution_prompt)
             state = self.executor_agent.process_response(response, state)
-
         
         return {"action_log": state["action_log"]}
 
-    def evaluation_step(self, state: AgentState): #Convert action_logs to a summary of what the agent did , and then pass it to task_log
+    def evaluation_step(self, state: AgentState): #Convert action_logs to a summary of what the agent did, and then pass it to task_log
         print("\n=== EVALUATION STEP ===")
         action_log = state["action_log"]
         evaluation_prompt = (f"Based on the action log, provide a summary of what the agent did based on the main task given. Only include the most important actions and the results of those actions. Do not include any actions that are irrelevant to the task or that did not produce a meaningful result.\n\n"
