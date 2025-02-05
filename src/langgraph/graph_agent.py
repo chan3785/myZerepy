@@ -1,4 +1,6 @@
 import json
+from idlelib.iomenu import encoding
+
 from langgraph.graph import StateGraph, START, END
 from typing_extensions import TypedDict
 from src.langgraph.langgraph_agent import LangGraphAgent
@@ -18,7 +20,7 @@ class GraphAgent:
         # Load agent configuration
 
         agent_path = Path("agents") / f"{agent_name}.json"
-        agent_dict = json.load(open(agent_path, "r"))
+        agent_dict = json.load(open(agent_path, "r", encoding="utf-8"))
         self.config_dict = agent_dict['config']
 
 
@@ -85,15 +87,8 @@ class GraphAgent:
         division_prompt = (f"Based on the given task and available actions, generate an action plan for the agent. Only respond with the list of steps needed (with the corresponding actions mentioned), and put each step on a new line. Only include actions that involve making requests—do not include actions like editing dialog boxes, clicking buttons, or other UI interactions. Assume the agent has the necessary connections to perform these actions, so do not include any steps related to establishing connections\n\n"
                    f"TASK:\n{state['current_task']}"
                    f"\n\nAVAILABLE ACTIONS FOR EACH CONNECTION:\n\n" +
-                   "\n\n".join(
-                       f"{connection}:\n" +
-                       ", ".join(
-                           f"{action} ({', '.join([param.name + ' (' + ('required' if param.required else 'optional') + ')' for param in action_obj.parameters])})"
-                           for action, action_obj in self.connection_manager.get_actions(connection).items()
-                       )
-                       for connection in self.connections
-                   )+
-                   f"\nExample:\n Task: Make a funny tweet\n\nAction Plan:\n1.Generate a witty joke or humorous statement using OpenAI by leveraging the generate-text function with an appropriate system prompt and input prompt. 2. Post the generated joke on Twitter using the post-tweet function, setting the message parameter to the joke from step 1.")
+                   "\n\n".join(connection.__str__() for connection in self.connections.values()) +
+                   "\n\nEXAMPLE:\n\nExample Task: Make a funny tweet\n\nAction Plan:\n1.Generate a witty joke or humorous statement using OpenAI by leveraging the generate-text function with an appropriate system prompt and input prompt. 2. Post the generated joke on Twitter using the post-tweet function, setting the message parameter to the joke from step 1.")
         action_plan_text = self.driver_llm.invoke(division_prompt).content
         action_plan = action_plan_text.split("\n")
         print(f"Generated action plan: {action_plan}")

@@ -1,3 +1,4 @@
+import json
 import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Callable
@@ -29,6 +30,27 @@ class Action:
                     errors.append(f"Invalid type for {param.name}. Expected {param.type.__name__}")
         return errors
 
+    def __dict__(self) -> dict:
+        # Convert action to dict object
+        action_dict = {self.name :
+                           {"description": self.description,
+                            "parameters": [
+                                {
+                                    "name": param.name,
+                                    "required": param.required,
+                                    "type": param.type.__name__,
+                                    "description": param.description
+                                }
+                                for param in self.parameters
+                            ],
+                            }
+                       }
+        return action_dict
+
+    def __str__(self) -> str:
+        # Convert action to string
+        return json.dumps(self.__dict__(), indent=4)
+
 class BaseConnection(ABC):
     def __init__(self, config):
         try:
@@ -46,35 +68,35 @@ class BaseConnection(ABC):
             raise e
     
     def _create_tool(self, action: Action) -> Callable:
-            """Convert an Action to a LangGraph tool format"""
-        
-            def tool_wrapper(tool_input: dict):
-                print(f"Tool invoked: {action.name} with arguments: {tool_input}")     
-                missing_params = [param.name for param in action.parameters if param.required and param.name not in tool_input]
-                all_required_params = [param.name for param in action.parameters if param.required]
-                
-                if missing_params:
-                    print(f"⚠️ Missing required parameters for {action.name}: {missing_params}")
-                    return {
-                        "status": "missing_params",
-                        "message": f"Missing required parameters for {action.name}: {', '.join(missing_params)} , retry with all required parameters",
-                        "missing_params": missing_params,
-                        "required_params": all_required_params 
-                    }
+        """Convert an Action to a LangGraph tool format"""
 
-                method_name = action.name.replace('-', '_')
-                method = getattr(self, method_name)
-                return method(**tool_input) 
+        def tool_wrapper(tool_input: dict):
+            print(f"Tool invoked: {action.name} with arguments: {tool_input}")
+            missing_params = [param.name for param in action.parameters if param.required and param.name not in tool_input]
+            all_required_params = [param.name for param in action.parameters if param.required]
 
-            tool_wrapper.__name__ = action.name
-            tool_wrapper.__doc__ = action.description
-            
-            tool_wrapper.__annotations__ = {
-                            param.name: {'type': param.type,'description': param.description}               
-                            for param in action.parameters
-                                if param.required
-                            }
-            return tool_wrapper
+            if missing_params:
+                print(f"⚠️ Missing required parameters for {action.name}: {missing_params}")
+                return {
+                    "status": "missing_params",
+                    "message": f"Missing required parameters for {action.name}: {', '.join(missing_params)} , retry with all required parameters",
+                    "missing_params": missing_params,
+                    "required_params": all_required_params
+                }
+
+            method_name = action.name.replace('-', '_')
+            method = getattr(self, method_name)
+            return method(**tool_input)
+
+        tool_wrapper.__name__ = action.name
+        tool_wrapper.__doc__ = action.description
+
+        tool_wrapper.__annotations__ = {
+                        param.name: {'type': param.type,'description': param.description}
+                        for param in action.parameters
+                            if param.required
+                        }
+        return tool_wrapper
 
     @property
     @abstractmethod
@@ -147,3 +169,17 @@ class BaseConnection(ABC):
             
         handler = self.actions[action_name]
         return handler(**kwargs)
+
+    def __str__(self):
+        # Convert dict object to string
+        return json.dumps(self.__dict__(), indent=4)
+
+    def __dict__(self):
+        # Create a dict object of the connection
+        connection_dict = {
+            self.__class__.__name__ : {
+                "is_llm_provider": self.is_llm_provider,
+                "actions": [action.__dict__() for action in self.actions.values()]
+            }
+        }
+        return connection_dict
