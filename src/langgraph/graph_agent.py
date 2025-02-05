@@ -18,7 +18,7 @@ class GraphAgent:
         # Load agent configuration
 
         agent_path = Path("agents") / f"{agent_name}.json"
-        agent_dict = json.load(open(agent_path, "r"))
+        agent_dict = json.load(open(agent_path, "r", encoding="utf-8"))
         self.config_dict = agent_dict['config']
 
 
