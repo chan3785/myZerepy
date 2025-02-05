@@ -158,10 +158,10 @@ class ZerePyCLI:
 
         self._register_command(
             Command(
-                name="test-graph",
-                description="Test the graph agent",
+                name="run-graph",
+                description="Run the graph agent",
                 tips=["File is in langgraph/graph_agent.py"],
-                handler=self.test_graph,
+                handler=self.run_graph,
             )
         )
         
@@ -564,12 +564,19 @@ class ZerePyCLI:
             except KeyboardInterrupt:
                 break
 
-    def test_graph(self,arg=None) -> None:
+    def run_graph(self,arg=None) -> None:
         """Test the graph agent"""
-        logger.info(f"Testing the graph agent for agent : {self.agent.name}")
+        
+        logger.info(f"Running graph agent for agent : {self.agent.name}")
+        task_to_perform = input("\n🔹 Enter the task to perform (e.g., 'Read the timeline, then write a tweet about it').\n"
+                                "🔹 Or simply press Enter to let the agent decide its own task.\n\n➡️ Your task: "
+        )
+        if (task_to_perform == ""):
+            task_to_perform = None
+
         print_h_bar()
         graph_agent = GraphAgent(self.agent_file_name)
-        final_state = graph_agent.run()
+        final_state = graph_agent.run(task=task_to_perform)
         print(f"Final state: {final_state}")
 
 

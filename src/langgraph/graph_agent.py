@@ -61,9 +61,12 @@ class GraphAgent:
 
     def determination_step(self, state: AgentState):
         print("\n=== DETERMINATION STEP ===")
-        print(f"Determining task from context: {state['context_summary']}")        
-        determination_prompt = DETERMINATION_PROMPT.format(context_summary=state['context_summary'], connection_action_list="\n\n".join(connection.__str__() for connection in self.connections.values()))
-        task = self.character_llm.invoke(determination_prompt).content
+        if (state['current_task'] == None): #Dynamically determine task
+            print(f"Determining task from context: {state['context_summary']}")        
+            determination_prompt = DETERMINATION_PROMPT.format(context_summary=state['context_summary'], connection_action_list="\n\n".join(connection.__str__() for connection in self.connections.values()))
+            task = self.character_llm.invoke(determination_prompt).content
+        else:
+            task = state['current_task']
         print(f"Determined task: {task}")
         return {"current_task": task}
 
@@ -105,14 +108,14 @@ class GraphAgent:
         state["task_log"] = state["task_log"][-3:]  #trim to the last 3 task logs
         return state
 
-    def run(self):
+    def run(self,task=None):
         # Initialize the graph
         self.graph = self.graph_builder.compile()
 
         # Run the graph
         initial_state = {
             "context": {},
-            "current_task": "Increase Twitter followers",
+            "current_task": task,
             "action_plan": [],
             "action_log": [],
             "task_log": []
