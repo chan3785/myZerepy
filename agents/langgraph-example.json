@@ -35,14 +35,6 @@
          "rpc": "https://api.mainnet-beta.solana.com"
        },
        {
-         "name": "sonic",
-         "network": "mainnet"
-       },
-       {
-         "name": "ethereum",
-         "rpc": "https://eth.blockrazor.xyz"  
-       },
-       {
          "name": "discord",
          "message_read_count": 10,
          "message_emoji_name": "❤️",
