@@ -62,7 +62,6 @@ class ZerePyAgent:
             # Extract loop tasks
             self.tasks = agent_dict.get("tasks", [])
             self.task_weights = [task.get("weight", 0) for task in self.tasks]
-            self.logger = logging.getLogger("agent")
 
             # Set up empty agent state
             self.state = {}
@@ -77,6 +76,7 @@ class ZerePyAgent:
         if not llm_providers:
             raise ValueError("No configured LLM provider found")
         self.model_provider = llm_providers[0]
+        self.is_llm_set = True
 
         # Load Twitter username for self-reply detection if Twitter tasks exist
         if any("tweet" in task["name"] for task in self.tasks):
@@ -125,7 +125,7 @@ class ZerePyAgent:
                 for weight, task in zip(weights, self.tasks)
             ]
             
-        # Increase engagement frequency during day hours (8 AM - 8 PM) (peak hours?🤔)
+        # Increase engagement frequency during day hours (8 AM - 8 PM)
         if 8 <= current_hour <= 20:
             weights = [
                 weight * self.time_based_multipliers.get("engagement_day_multiplier", 1.5) if task["name"] in ("reply-to-tweet", "like-tweet")
@@ -145,10 +145,12 @@ class ZerePyAgent:
             params=[prompt, system_prompt]
         )
 
-    def perform_action(self, connection: str, action: str, **kwargs) -> None:
-        return self.connection_manager.perform_action(connection, action, **kwargs)
+    def perform_action(self, connection: str, action: str, params: list = None) -> None:
+        """Execute an action on a specific connection"""
+        return self.connection_manager.perform_action(connection, action, params or [])
     
     def select_action(self, use_time_based_weights: bool = False) -> dict:
+        """Select next action based on weights"""
         task_weights = [weight for weight in self.task_weights.copy()]
         
         if use_time_based_weights:
@@ -158,7 +160,7 @@ class ZerePyAgent:
         return random.choices(self.tasks, weights=task_weights, k=1)[0]
 
     def loop(self):
-        """Main agent loop for autonomous behavior"""
+        """Simple loop to check Sonic balance and tweet about it"""
         if not self.is_llm_set:
             self._setup_llm_provider()
 
@@ -166,54 +168,30 @@ class ZerePyAgent:
         logger.info("Press Ctrl+C at any time to stop the loop.")
         print_h_bar()
 
-        time.sleep(2)
-        logger.info("Starting loop in 5 seconds...")
-        for i in range(5, 0, -1):
-            logger.info(f"{i}...")
-            time.sleep(1)
-
         try:
             while True:
-                success = False
                 try:
-                    # REPLENISH INPUTS
-                    # TODO: Add more inputs to complexify agent behavior
-                    if "timeline_tweets" not in self.state or self.state["timeline_tweets"] is None or len(self.state["timeline_tweets"]) == 0:
-                        if any("tweet" in task["name"] for task in self.tasks):
-                            logger.info("\n👀 READING TIMELINE")
-                            self.state["timeline_tweets"] = self.connection_manager.perform_action(
-                                connection_name="twitter",
-                                action_name="read-timeline",
-                                params=[]
-                            )
-
-                    if "room_info" not in self.state or self.state["room_info"] is None:
-                        if any("echochambers" in task["name"] for task in self.tasks):
-                            logger.info("\n👀 READING ECHOCHAMBERS ROOM INFO")
-                            self.state["room_info"] = self.connection_manager.perform_action(
-                                connection_name="echochambers",
-                                action_name="get-room-info",
-                                params={}
-                            )
-
-                    # CHOOSE AN ACTION
-                    # TODO: Add agentic action selection
+                    logger.info("\n📊 Checking Sonic balance...")
+                    balance = self.perform_action("sonic", "get-balance")
                     
-                    action = self.select_action(use_time_based_weights=self.use_time_based_weights)
-                    action_name = action["name"]
+                    if balance is not None:
+                        logger.info(f"\n💰 Current balance: {balance} $S")
+                        prompt = f"Write a tweet about having {balance} $S (Sonic token). Be casual and fun."
+                        tweet = self.prompt_llm(prompt)
+                        
+                        if tweet:
+                            logger.info(f"\n🚀 Posting tweet: {tweet}")
+                            self.perform_action("twitter", "post-tweet", [tweet])
+                            logger.info("✅ Tweet posted!")
 
-                    # PERFORM ACTION
-                    success = execute_action(self, action_name)
-
-                    logger.info(f"\n⏳ Waiting {self.loop_delay} seconds before next loop...")
+                    logger.info(f"\n⏳ Waiting {self.loop_delay} seconds...")
                     print_h_bar()
-                    time.sleep(self.loop_delay if success else 60)
+                    time.sleep(self.loop_delay)
 
                 except Exception as e:
-                    logger.error(f"\n❌ Error in agent loop iteration: {e}")
-                    logger.info(f"⏳ Waiting {self.loop_delay} seconds before retrying...")
-                    time.sleep(self.loop_delay)
+                    logger.error(f"\n❌ Error in loop: {e}")
+                    time.sleep(60)
 
         except KeyboardInterrupt:
             logger.info("\n🛑 Agent loop stopped by user.")
-            return
+            returngi
