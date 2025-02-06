@@ -1,4 +1,4 @@
-from src.client import ZerePyClient
+from src.server.client import ZerePyClient
 import logging
 import time
 
