@@ -9,7 +9,7 @@ def test_llm_chat():
     try:
         # Initialize CLI and load agent
         cli = ZerePyCLI()
-        cli._load_agent_from_file("mijo")
+        cli._load_agent_from_file("starter")
         
         if not cli.agent:
             logger.error("Failed to load agent")

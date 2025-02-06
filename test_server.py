@@ -16,7 +16,7 @@ def test_server_mode():
         logger.info(f"Server Status: {status}")
         
         # Load minimal agent
-        response = client.load_agent("mijo")
+        response = client.load_agent("starter")
         logger.info(f"Load Agent Response: {response}")
         
         # List connections
