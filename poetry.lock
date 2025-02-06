@@ -1423,6 +1423,21 @@ aiohttp = ">=3.8.6,<4.0.0"
 goat-sdk = ">=0.1.1,<0.2.0"
 
 [[package]]
+name = "goat-sdk-plugin-dexscreener"
+version = "0.1.1"
+description = "Goat plugin for Dexscreener"
+optional = false
+python-versions = "<4.0,>=3.10"
+files = [
+    {file = "goat_sdk_plugin_dexscreener-0.1.1-py3-none-any.whl", hash = "sha256:c034c77d63a68e869f8b913a571b4eaac27bc6817227237dc296073ac8621155"},
+    {file = "goat_sdk_plugin_dexscreener-0.1.1.tar.gz", hash = "sha256:3232152fd735ec4a3cca1ea5369be4a9bb111098fb0cc9bea2a4a512393220de"},
+]
+
+[package.dependencies]
+aiohttp = ">=3.8.6,<4.0.0"
+goat-sdk = ">=0.1.1,<0.2.0"
+
+[[package]]
 name = "goat-sdk-plugin-erc20"
 version = "0.1.0"
 description = "Goat plugin for ERC20"
@@ -3967,4 +3982,4 @@ server = ["fastapi", "requests", "uvicorn"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "e89a8fba0ae100a0d83eb93885429fea248555d740fe065c16b6b60675784408"
+content-hash = "88cf0b32c2eeecb30f754589621bcaa38a9dbe10e25b593bb850a78926778fd6"

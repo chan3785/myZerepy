@@ -2,6 +2,8 @@
 
 ## Initial Setup
 
+NOTE: valid ANTHROPIC_API_KEY required in .env
+
 1. Start the server:
 ```bash
 poetry run python main.py --server

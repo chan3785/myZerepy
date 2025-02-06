@@ -40,7 +40,8 @@ def test_brain(agent_name: str = "example"):
             # "get me info about bitcoin",
             # "check my eth balance",
             # "what actions can you do",
-            "please send .001 native token to 0xFF6CBf6830C47F683aC3227baD83c0BE5397A08F",
+            # "help me swap 2 usdc for MOG",
+            "swap 1 million mog for usdc"
             # "what is proof of history"
             # "can you automatically set chain parameters based on what network you see logged in via rpc when i make a uniswap call?", 
             # "help me swap eth for 1 usdc"
