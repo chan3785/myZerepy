@@ -23,8 +23,11 @@ class FarcasterAPIError(FarcasterConnectionError):
 class FarcasterConnection(BaseConnection):
     def __init__(self, config: Dict[str, Any]):
         logger.info("Initializing Farcaster connection...")
+        self._initialized = False
+        self._closed = False
+        self._client = None
+        self._last_error = None
         super().__init__(config)
-        self._client: Warpcast = None
 
     @property
     def is_llm_provider(self) -> bool:
