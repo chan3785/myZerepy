@@ -175,18 +175,36 @@ class FarcasterConnection(BaseConnection):
             logger.error(f"❌ Configuration failed: {e}")
             return False
 
+    def _initialize_client(self) -> None:
+        """Initialize Warpcast client with retry logic"""
+        if self._initialized:
+            return
+
+        try:
+            credentials = self._get_credentials()
+            self._client = Warpcast(mnemonic=credentials['FARCASTER_MNEMONIC'])
+            self._client.get_me()  # Validate connection
+            self._initialized = True
+            self._last_error = None
+        except Exception as e:
+            self._last_error = str(e)
+            self._cleanup()
+            raise FarcasterConnectionError(f"Failed to initialize client: {e}")
+
+    def _cleanup(self) -> None:
+        """Clean up connection resources"""
+        if not self._closed:
+            self._client = None
+            self._initialized = False
+            self._closed = True
+
     def is_configured(self, verbose = False) -> bool:
         """Check if Farcaster credentials are configured and valid"""
         logger.debug("Checking Farcaster configuration status")
         try:
-            credentials = self._get_credentials()
-
-            self._client = Warpcast(mnemonic=credentials['FARCASTER_MNEMONIC'])
-
-            self._client.get_me()
-            logger.debug("Farcaster configuration is valid")
+            if not self._initialized:
+                self._initialize_client()
             return True
-
         except Exception as e:
             if verbose:
                 error_msg = str(e)
