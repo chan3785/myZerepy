@@ -1,58 +1,90 @@
 """Global settings management for ZerePy."""
-from typing import Any, Dict, Optional
+import logging
+from typing import Any, Dict, List, Optional, Type
 from pathlib import Path
 import os
-import json
+from .providers import ConfigProvider, EnvConfigProvider, FileConfigProvider
+from .composite import CompositeConfigProvider
+from .validation import (
+    ConfigValidator,
+    ConnectionConfigValidator,
+    PluginConfigValidator,
+    AgentConfigValidator,
+    ValidationError
+)
+
+logger = logging.getLogger("settings")
 
 class Settings:
     """Global settings manager."""
     
     def __init__(self):
         """Initialize settings manager."""
-        self._settings: Dict[str, Any] = {}
         self._config_dir = Path.home() / '.zerepy'
         self._config_file = self._config_dir / 'config.json'
-        self._load_settings()
+        self._env_file = self._config_dir / '.env'
         
-    def _load_settings(self) -> None:
-        """Load settings from config file."""
+        # Ensure config directory exists
         if not self._config_dir.exists():
             self._config_dir.mkdir(parents=True)
             
-        if self._config_file.exists():
-            try:
-                with open(self._config_file, 'r') as f:
-                    self._settings = json.load(f)
-            except Exception as e:
-                self._settings = {}
-                
-    def _save_settings(self) -> None:
-        """Save settings to config file."""
-        try:
-            with open(self._config_file, 'w') as f:
-                json.dump(self._settings, f, indent=4)
-        except Exception as e:
-            pass  # Fail silently on save errors
+        # Initialize providers
+        self._providers = CompositeConfigProvider([
+            EnvConfigProvider(str(self._env_file)),
+            FileConfigProvider(str(self._config_file))
+        ])
+        
+        # Initialize validators
+        self._validators = {
+            'connection': ConnectionConfigValidator(),
+            'plugin': PluginConfigValidator(),
+            'agent': AgentConfigValidator()
+        }
+        
+    def validate(self, config: Dict[str, Any], validator_type: str) -> List[ValidationError]:
+        """
+        Validate configuration.
+        
+        Args:
+            config: Configuration to validate
+            validator_type: Type of validator to use
             
+        Returns:
+            List of validation errors
+        """
+        if validator_type not in self._validators:
+            logger.error(f"Unknown validator type: {validator_type}")
+            return []
+            
+        return self._validators[validator_type].validate(config)
+        
     def get(self, key: str, default: Any = None) -> Any:
         """Get a setting value."""
-        return self._settings.get(key, default)
+        return self._providers.get(key, default)
         
     def set(self, key: str, value: Any) -> None:
         """Set a setting value."""
-        self._settings[key] = value
-        self._save_settings()
+        self._providers.set(key, value)
         
     def delete(self, key: str) -> None:
         """Delete a setting."""
-        if key in self._settings:
-            del self._settings[key]
-            self._save_settings()
+        # Note: We only delete from file provider to maintain env vars
+        file_provider = self._providers._providers[1]
+        if isinstance(file_provider, FileConfigProvider):
+            config = file_provider._config
+            if key in config:
+                del config[key]
+                file_provider._save_config()
             
     @property
     def all(self) -> Dict[str, Any]:
         """Get all settings."""
-        return self._settings.copy()
+        # Combine settings from all providers
+        settings = {}
+        for provider in reversed(self._providers._providers):
+            if isinstance(provider, FileConfigProvider):
+                settings.update(provider._config)
+        return settings.copy()
 
 # Global settings instance
 settings = Settings()
