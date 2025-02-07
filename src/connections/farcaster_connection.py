@@ -282,20 +282,10 @@ class FarcasterConnection(BaseConnection):
         """Fetch cast replies (thread)"""
         logger.debug(f"Fetching replies for thread: {thread_hash}")
         return self._client.get_all_casts_in_thread(thread_hash)
-    
-    # "reply-to-cast": Action(
-    #     name="reply-to-cast",
-    #     parameters=[
-    #         ActionParameter("parent_fid", True, int, "Farcaster ID of the parent cast to reply to"),
-    #         ActionParameter("parent_hash", True, str, "Hash of the parent cast to reply to"),
-    #         ActionParameter("text", True, str, "Text content of the cast"),
-    #     ],
-    #     description="Reply to an existing cast"
-    # ),
-    # "get-cast-replies": Action(
-    #     name="get-cast-replies", # get_all_casts_in_thread
-    #     parameters=[
-    #         ActionParameter("thread_hash", True, str, "Hash of the thread to query for replies")
-    #     ],
-    #     description="Fetch cast replies (thread)"
-    # )
+
+    def __del__(self):
+        """Ensure cleanup on deletion"""
+        try:
+            self._cleanup()
+        except Exception as e:
+            logger.error(f"Error during cleanup: {e}")
