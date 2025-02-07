@@ -13,7 +13,7 @@ from prompt_toolkit.history import FileHistory
 from src.agent import ZerePyAgent
 from src.helpers import print_h_bar
 from src.langgraph.langgraph_agent import LangGraphAgent
-from src.langgraph.graph_agent import GraphAgent
+from src.langgraph.graph_agent import GraphAgent,RunMode
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -575,7 +575,7 @@ class ZerePyCLI:
             task_to_perform = None
 
         print_h_bar()
-        graph_agent = GraphAgent(self.agent_file_name)
+        graph_agent = GraphAgent(self.agent_file_name,run_mode=RunMode.AUTONOMOUS)
         final_state = graph_agent.run(task=task_to_perform)
         print(f"Final state: {final_state}")
 
