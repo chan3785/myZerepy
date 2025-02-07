@@ -9,6 +9,7 @@ from .exceptions import (
     PluginCleanupError,
 )
 from .discovery import discover_plugins
+from .registry import PluginRegistry
 
 __all__ = [
     'PluginBase',
@@ -21,4 +22,5 @@ __all__ = [
     'PluginExecutionError',
     'PluginCleanupError',
     'discover_plugins',
+    'PluginRegistry',
 ]
