@@ -217,6 +217,9 @@ class FarcasterConnection(BaseConnection):
     
     def perform_action(self, action_name: str, kwargs) -> Any:
         """Execute a Farcaster action with validation"""
+        if not self._initialized:
+            self._initialize_client()
+
         if action_name not in self.actions:
             raise KeyError(f"Unknown action: {action_name}")
 
@@ -225,14 +228,20 @@ class FarcasterConnection(BaseConnection):
         if errors:
             raise ValueError(f"Invalid parameters: {', '.join(errors)}")
 
-        # Add config parameters if not provided
-        if action_name == "read-timeline" and "count" not in kwargs:
-            kwargs["count"] = self.config["timeline_read_count"]
+        try:
+            # Add config parameters if not provided
+            if action_name == "read-timeline" and "count" not in kwargs:
+                kwargs["count"] = self.config["timeline_read_count"]
 
-        # Call the appropriate method based on action name
-        method_name = action_name.replace('-', '_')
-        method = getattr(self, method_name)
-        return method(**kwargs)
+            # Call the appropriate method based on action name
+            method_name = action_name.replace('-', '_')
+            method = getattr(self, method_name)
+            return method(**kwargs)
+        except Exception as e:
+            self._last_error = str(e)
+            if isinstance(e, (FarcasterConnectionError, ValueError, KeyError)):
+                raise
+            raise FarcasterAPIError(f"Action {action_name} failed: {e}")
     
     def get_latest_casts(self, fid: int, cursor: Optional[int] = None, limit: Optional[int] = 25) -> IterableCastsResult:
         """Get the latest casts from a user"""
