@@ -313,7 +313,35 @@ class PluginConfig(BaseModel):
     args: Dict[str, Any]
 
 class GoatConfig(BaseConnectionConfig):
-    """Configuration for Goat connection"""
+    """Configuration for Goat plugin-based connection.
+    
+    Example:
+        {
+            "name": "goat",
+            "plugins": [
+                {
+                    "name": "erc20",
+                    "args": {
+                        "contract_address": "0x1234...",
+                        "chain_id": 1,
+                        "decimals": 18
+                    }
+                },
+                {
+                    "name": "coingecko",
+                    "args": {
+                        "api_key": "your-api-key"
+                    }
+                }
+            ],
+            "enabled": true
+        }
+    
+    Fields:
+        name: Connection identifier, must be "goat"
+        plugins: List of plugin configurations to enable
+        enabled: Whether the connection is enabled (default: true)
+    """
     name: str = "goat"
     plugins: List[PluginConfig]
 
