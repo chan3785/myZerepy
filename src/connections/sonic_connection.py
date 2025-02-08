@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional, cast, Union
 from dotenv import load_dotenv, set_key
 from web3 import Web3
 from web3.middleware import geth_poa_middleware
-from web3.types import Wei, TxParams, TxReceipt
+from web3.types import Wei, TxParams, TxReceipt, HexBytes
 from src.constants.abi import ERC20_ABI
 from src.connections.base_connection import BaseConnection
 from src.constants.networks import SONIC_NETWORKS
@@ -162,6 +162,7 @@ class SonicConnection(BaseConnection):
             return False
 
     def is_configured(self, verbose: bool = False) -> bool:
+        """Check if the connection is properly configured"""
         try:
             load_dotenv()
             if not os.getenv('SONIC_PRIVATE_KEY'):
@@ -169,16 +170,21 @@ class SonicConnection(BaseConnection):
                     logger.error("Missing SONIC_PRIVATE_KEY in .env")
                 return False
 
-            if not self._web3:
+            web3 = self._web3
+            if not web3:
                 if verbose:
                     logger.error("Web3 not initialized")
                 return False
 
             try:
-                if not self._web3.is_connected():
+                # Type-safe access to Web3 instance
+                if not web3.is_connected():
                     if verbose:
                         logger.error("Not connected to Sonic network")
                     return False
+
+                # Verify we can access eth property
+                _ = web3.eth
             except Exception as e:
                 if verbose:
                     logger.error(f"Failed to check connection: {e}")
@@ -204,6 +210,9 @@ class SonicConnection(BaseConnection):
                 account = self._web3.eth.account.from_key(private_key)
                 address = account.address
 
+            if not isinstance(address, str):
+                raise ValueError("Address must be a string")
+
             checksum_address = Web3.to_checksum_address(address)
 
             if token_address:
@@ -216,7 +225,8 @@ class SonicConnection(BaseConnection):
                 return float(balance) / (10 ** decimals)
             else:
                 balance = self._web3.eth.get_balance(checksum_address)
-                return float(self._web3.from_wei(balance, 'ether'))
+                wei_balance = float(balance)
+                return float(self._web3.from_wei(Wei(int(wei_balance)), 'ether'))
 
         except Exception as e:
             logger.error(f"Failed to get balance: {e}")
@@ -463,7 +473,7 @@ class SonicConnection(BaseConnection):
             base_tx: TxParams = {
                 'from': account.address,
                 'to': Web3.to_checksum_address(router_address),
-                'data': Web3.to_hex(encoded_data) if isinstance(encoded_data, bytes) else encoded_data,
+                'data': HexBytes(encoded_data) if isinstance(encoded_data, str) else encoded_data,
                 'nonce': self._web3.eth.get_transaction_count(account.address),
                 'gasPrice': self._web3.eth.gas_price,
                 'chainId': self._web3.eth.chain_id,
