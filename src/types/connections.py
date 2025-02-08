@@ -518,7 +518,28 @@ class GaladrielConfig(LLMConnectionConfig):
     fine_tune_api_key: Optional[str] = None  # Optional fine-tune API key
 
 class DiscordConfig(BaseConnectionConfig):
-    """Configuration for Discord connection"""
+    """Configuration for Discord chat platform connection.
+    
+    Example:
+        {
+            "name": "discord",
+            "bot_token": "your-bot-token",
+            "guild_id": "123456789",  # Optional, specific server ID
+            "channel_id": "987654321",  # Optional, specific channel ID
+            "message_limit": 100,
+            "message_interval": 60,
+            "enabled": true
+        }
+    
+    Fields:
+        name: Connection identifier, must be "discord"
+        bot_token: Discord bot token for authentication
+        guild_id: Specific server/guild ID to connect to (optional)
+        channel_id: Specific channel ID to monitor (optional)
+        message_limit: Maximum messages to fetch per request (default: 100)
+        message_interval: Time between message checks in seconds (default: 60)
+        enabled: Whether the connection is enabled (default: true)
+    """
     name: str = "discord"
     bot_token: str
     guild_id: Optional[str] = None
