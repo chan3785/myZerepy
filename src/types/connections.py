@@ -145,14 +145,48 @@ class TwitterConfig(BaseConnectionConfig):
     timeline_read_count: int = Field(default=10, gt=0)
 
 class TogetherConfig(LLMConnectionConfig):
-    """Configuration for Together AI connection"""
+    """Configuration for Together AI LLM connection.
+    
+    Example:
+        {
+            "name": "together",
+            "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+            "temperature": 0.7,
+            "max_tokens": 2000,
+            "api_key": "your-api-key"  # Optional, can be set via environment variable
+        }
+    
+    Fields:
+        name: Connection identifier, must be "together"
+        model: Together AI model to use (e.g., "mistralai/Mixtral-8x7B-Instruct-v0.1")
+        temperature: Controls randomness in responses (0.0 to 2.0)
+        max_tokens: Maximum tokens in response (optional)
+        api_key: Together AI API key (optional if set in environment)
+    """
     name: str = "together"
     model: str = "mistralai/Mixtral-8x7B-Instruct-v0.1"
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: Optional[int] = Field(default=None, gt=0)
 
 class OllamaConfig(LLMConnectionConfig):
-    """Configuration for Ollama connection"""
+    """Configuration for Ollama local LLM connection.
+    
+    Example:
+        {
+            "name": "ollama",
+            "model": "mistral",
+            "temperature": 0.7,
+            "max_tokens": 2000,
+            "host": "http://localhost:11434"
+        }
+    
+    Fields:
+        name: Connection identifier, must be "ollama"
+        model: Ollama model to use (e.g., "mistral", "llama2")
+        temperature: Controls randomness in responses (0.0 to 2.0)
+        max_tokens: Maximum tokens in response (optional)
+        host: Ollama server URL (default: http://localhost:11434)
+    """
     name: str = "ollama"
     model: str = "mistral"
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
