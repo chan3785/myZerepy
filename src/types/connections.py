@@ -382,7 +382,30 @@ class EchoChamberConfig(BaseConnectionConfig):
     post_history_track: int = Field(default=50, gt=0)
 
 class SonicConfig(BlockchainConnectionConfig):
-    """Configuration for Sonic connection"""
+    """Configuration for Sonic DEX blockchain connection.
+    
+    Example:
+        {
+            "name": "sonic",
+            "network": "mainnet",
+            "rpc_url": "https://rpc.sonic.network",
+            "explorer_url": "https://explorer.sonic.network",
+            "aggregator_api": "https://aggregator-api.kyberswap.com/sonic/api/v1",
+            "max_queue_size": 100,
+            "gas_limit": 500000,
+            "enabled": true
+        }
+    
+    Fields:
+        name: Connection identifier, must be "sonic"
+        network: Network to connect to (e.g., "mainnet", "testnet")
+        rpc_url: Custom RPC endpoint URL (optional, derived from network)
+        explorer_url: Block explorer URL (optional, derived from network)
+        aggregator_api: KyberSwap aggregator API endpoint
+        max_queue_size: Maximum transaction queue size (default: 100)
+        gas_limit: Maximum gas limit for transactions (optional)
+        enabled: Whether the connection is enabled (default: true)
+    """
     name: str = "sonic"
     network: str = "mainnet"
     rpc_url: Optional[str] = None  # Optional since it can be derived from network
