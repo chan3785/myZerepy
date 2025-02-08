@@ -53,17 +53,18 @@ class SonicConnection(BaseConnection):
         """Generate block explorer link for transaction"""
         return f"{self.explorer}/tx/{tx_hash}"
 
-    def _initialize_web3(self):
+    def _initialize_web3(self) -> None:
         """Initialize Web3 connection"""
         if not self._web3:
             self._web3 = Web3(Web3.HTTPProvider(self.rpc_url))
             self._web3.middleware_onion.inject(geth_poa_middleware, layer=0)
-            if not self._web3.is_connected():
+            if not self._web3 or not self._web3.is_connected():
                 raise SonicConnectionError("Failed to connect to Sonic network")
             
             try:
-                chain_id = self._web3.eth.chain_id
-                logger.info(f"Connected to network with chain ID: {chain_id}")
+                if self._web3:
+                    chain_id = self._web3.eth.chain_id
+                    logger.info(f"Connected to network with chain ID: {chain_id}")
             except Exception as e:
                 logger.warning(f"Could not get chain ID: {e}")
 
@@ -112,12 +113,38 @@ class SonicConnection(BaseConnection):
             ]
 
             if sonic_pairs:
-                return sonic_pairs[0].get("baseToken", {}).get("address")
+                address = sonic_pairs[0].get("baseToken", {}).get("address")
+                return str(address) if address is not None else None
             return None
 
         except Exception as error:
             logger.error(f"Error fetching token address: {str(error)}")
             return None
+
+    def get_balance(self, address: Optional[str] = None, token_address: Optional[str] = None) -> float:
+        """Get balance for an address or the configured wallet"""
+        try:
+            if not self._web3:
+                raise SonicConnectionError("Web3 not initialized")
+
+            if not address:
+                private_key = os.getenv('SONIC_PRIVATE_KEY')
+                if not private_key:
+                    raise SonicConnectionError("No wallet configured")
+                account = self._web3.eth.account.from_key(private_key)
+                address = account.address
+
+            if token_address:
+                contract = self._web3.eth.contract(
+                    address=Web3.to_checksum_address(token_address),
+                    abi=self.ERC20_ABI
+                )
+                balance = contract.functions.balanceOf(address).call()
+                decimals = contract.functions.decimals().call()
+                return float(balance) / (10 ** decimals)
+            else:
+                balance = self._web3.eth.get_balance(address)
+                return float(self._web3.from_wei(balance, 'ether'))
 
     def register_actions(self) -> None:
         """Register available Sonic actions"""
@@ -206,7 +233,13 @@ class SonicConnection(BaseConnection):
     def transfer(self, to_address: str, amount: float, token_address: Optional[str] = None) -> str:
         """Transfer $S or tokens to an address"""
         try:
+            if not self._web3:
+                raise SonicConnectionError("Web3 not initialized")
+
             private_key = os.getenv('SONIC_PRIVATE_KEY')
+            if not private_key:
+                raise SonicConnectionError("No wallet configured")
+
             account = self._web3.eth.account.from_key(private_key)
             chain_id = self._web3.eth.chain_id
             
@@ -248,11 +281,12 @@ class SonicConnection(BaseConnection):
             logger.error(f"Transfer failed: {e}")
             raise
 
-    def _get_swap_route(self, token_in: str, token_out: str, amount_in: float) -> Dict:
+    def _get_swap_route(self, token_in: str, token_out: str, amount_in: float) -> Dict[str, Any]:
         """Get the best swap route from Kyberswap API"""
         try:
-            # Handle native token address
-            
+            if not self._web3:
+                raise SonicConnectionError("Web3 not initialized")
+
             # Convert amount to raw value
             if token_in.lower() == self.NATIVE_TOKEN.lower():
                 amount_raw = self._web3.to_wei(amount_in, 'ether')
@@ -281,16 +315,25 @@ class SonicConnection(BaseConnection):
             if data.get("code") != 0:
                 raise SonicConnectionError(f"API error: {data.get('message')}")
                 
-            return data["data"]
+            result = data.get("data")
+            if not result:
+                raise SonicConnectionError("No route data returned from API")
+            return result
                 
         except Exception as e:
             logger.error(f"Failed to get swap route: {e}")
             raise
 
-    def _get_encoded_swap_data(self, route_summary: Dict, slippage: float = 0.5) -> str:
+    def _get_encoded_swap_data(self, route_summary: Dict[str, Any], slippage: float = 0.5) -> str:
         """Get encoded swap data from Kyberswap API"""
         try:
+            if not self._web3:
+                raise SonicConnectionError("Web3 not initialized")
+
             private_key = os.getenv('SONIC_PRIVATE_KEY')
+            if not private_key:
+                raise SonicConnectionError("No wallet configured")
+
             account = self._web3.eth.account.from_key(private_key)
             
             url = f"{self.aggregator_api}/route/build"
@@ -312,7 +355,10 @@ class SonicConnection(BaseConnection):
             if data.get("code") != 0:
                 raise SonicConnectionError(f"API error: {data.get('message')}")
                 
-            return data["data"]["data"]
+            encoded_data = data.get("data", {}).get("data")
+            if not isinstance(encoded_data, str):
+                raise SonicConnectionError("Invalid encoded data returned from API")
+            return encoded_data
                 
         except Exception as e:
             logger.error(f"Failed to encode swap data: {e}")
@@ -321,7 +367,13 @@ class SonicConnection(BaseConnection):
     def _handle_token_approval(self, token_address: str, spender_address: str, amount: int) -> None:
         """Handle token approval for spender"""
         try:
+            if not self._web3:
+                raise SonicConnectionError("Web3 not initialized")
+
             private_key = os.getenv('SONIC_PRIVATE_KEY')
+            if not private_key:
+                raise SonicConnectionError("No wallet configured")
+
             account = self._web3.eth.account.from_key(private_key)
             
             token_contract = self._web3.eth.contract(
@@ -351,7 +403,9 @@ class SonicConnection(BaseConnection):
                 logger.info(f"Approval transaction sent: {self._get_explorer_link(tx_hash.hex())}")
                 
                 # Wait for approval to be mined
-                self._web3.eth.wait_for_transaction_receipt(tx_hash)
+                receipt = self._web3.eth.wait_for_transaction_receipt(tx_hash)
+                if receipt.status != 1:
+                    raise SonicConnectionError("Approval transaction failed")
                 
         except Exception as e:
             logger.error(f"Approval failed: {e}")
@@ -360,7 +414,13 @@ class SonicConnection(BaseConnection):
     def swap(self, token_in: str, token_out: str, amount: float, slippage: float = 0.5) -> str:
         """Execute a token swap using the KyberSwap router"""
         try:
+            if not self._web3:
+                raise SonicConnectionError("Web3 not initialized")
+
             private_key = os.getenv('SONIC_PRIVATE_KEY')
+            if not private_key:
+                raise SonicConnectionError("No wallet configured")
+
             account = self._web3.eth.account.from_key(private_key)
 
             # Check token balance before proceeding
@@ -379,7 +439,9 @@ class SonicConnection(BaseConnection):
             encoded_data = self._get_encoded_swap_data(route_data["routeSummary"], slippage)
             
             # Get router address from route data
-            router_address = route_data["routerAddress"]
+            router_address = route_data.get("routerAddress")
+            if not router_address:
+                raise SonicConnectionError("No router address in route data")
             
             # Handle token approval if not using native token
             if token_in.lower() != self.NATIVE_TOKEN.lower():
@@ -416,7 +478,12 @@ class SonicConnection(BaseConnection):
             signed_tx = account.sign_transaction(tx)
             tx_hash = self._web3.eth.send_raw_transaction(signed_tx.rawTransaction)
             
-            # Log and return explorer link immediately
+            # Wait for transaction receipt and check status
+            receipt = self._web3.eth.wait_for_transaction_receipt(tx_hash)
+            if receipt.status != 1:
+                raise SonicConnectionError("Swap transaction failed")
+            
+            # Return explorer link
             tx_link = self._get_explorer_link(tx_hash.hex())
             return f"🔄 Swap transaction sent: {tx_link}"
                 
