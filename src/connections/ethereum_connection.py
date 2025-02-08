@@ -90,48 +90,14 @@ class EthereumConnection(BaseConnection):
     def register_actions(self) -> None:
         """Register available Ethereum actions"""
         self.actions = {
-            "get-token-by-ticker": Action(
-                name="get-token-by-ticker",
-                parameters=[
-                    ActionParameter("ticker", True, str, "Token ticker symbol to look up")
-                ],
-                description="Get token address by ticker symbol"
-            ),
-            "get-balance": Action(
-                name="get-balance",
-                parameters=[
-                    ActionParameter("address", False, str, "Address to check balance for (optional)"),
-                    ActionParameter("token_address", False, str, "Token address (optional, native token if not provided)")
-                ],
-                description="Get ETH or token balance"
-            ),
-            "transfer": Action(
-                name="transfer", 
-                parameters=[
-                    ActionParameter("to_address", True, str, "Recipient address"),
-                    ActionParameter("amount", True, float, "Amount to transfer"),
-                    ActionParameter("token_address", False, str, "Token address (optional, native token if not provided)")
-                ],
-                description="Send ETH or tokens"
-            ),
-            "get-address": Action(
-            name="get-address",
-            parameters=[],
-            description="Get your Ethereum wallet address"
-            ),
-            "swap": Action(
-                name="swap",
-                parameters=[
-                    ActionParameter("token_in", True, str, "Input token address"),
-                    ActionParameter("token_out", True, str, "Output token address"),
-                    ActionParameter("amount", True, float, "Amount to swap"),
-                    ActionParameter("slippage", False, float, "Max slippage percentage (default 0.5%)")
-                ],
-                description="Swap tokens using Kyberswap aggregator"
-            )
+            "get-token-by-ticker": self.get_token_by_ticker,
+            "get-balance": self.get_balance,
+            "transfer": self.transfer,
+            "get-address": self.get_address,
+            "swap": self.swap
         }
 
-    def configure(self) -> bool:
+    def configure(self, **kwargs: Any) -> bool:
         """Sets up Ethereum wallet and API credentials"""
         logger.info("\n⛓️ ETHEREUM SETUP")
         

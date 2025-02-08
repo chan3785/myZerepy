@@ -48,64 +48,13 @@ class FarcasterConnection(BaseConnection):
     def register_actions(self) -> None:
         """Register available Farcaster actions"""
         self.actions = {
-            "get-latest-casts": Action(
-                name="get-latest-casts",
-                parameters=[
-                    ActionParameter("fid", True, int, "Farcaster ID of the user"),
-                    ActionParameter("cursor", False, int, "Cursor, defaults to None"),
-                    ActionParameter("limit", False, int, "Number of casts to read, defaults to 25, otherwise min(limit, 100)")
-                ],
-                description="Get the latest casts from a user"
-            ),
-            "post-cast": Action(
-                name="post-cast",
-                parameters=[
-                    ActionParameter("text", True, str, "Text content of the cast"),
-                    ActionParameter("embeds", False, List[str], "List of embeds, defaults to None"),
-                    ActionParameter("channel_key", False, str, "Channel key, defaults to None"),
-                ],
-                description="Post a new cast"
-            ),
-            "read-timeline": Action(
-                name="read-timeline",
-                parameters=[
-                    ActionParameter("cursor", False, int, "Cursor, defaults to None"),
-                    ActionParameter("limit", False, int, "Number of casts to read from timeline, defaults to 100")
-                ],
-                description="Read all recent casts"
-            ),
-            "like-cast": Action(
-                name="like-cast",
-                parameters=[
-                    ActionParameter("cast_hash", True, str, "Hash of the cast to like")
-                ],
-                description="Like a specific cast"
-            ),
-            "requote-cast": Action(
-                name="requote-cast",
-                parameters=[
-                    ActionParameter("cast_hash", True, str, "Hash of the cast to requote")
-                ],
-                description="Requote a cast (recast)"
-            ),
-            "reply-to-cast": Action(
-                name="reply-to-cast",
-                parameters=[
-                    ActionParameter("parent_fid", True, int, "Farcaster ID of the parent cast to reply to"),
-                    ActionParameter("parent_hash", True, str, "Hash of the parent cast to reply to"),
-                    ActionParameter("text", True, str, "Text content of the cast"),
-                    ActionParameter("embeds", False, List[str], "List of embeds, defaults to None"),
-                    ActionParameter("channel_key", False, str, "Channel of the cast, defaults to None"),
-                ],
-                description="Reply to a cast"
-            ),
-            "get-cast-replies": Action(
-                name="get-cast-replies", # get_all_casts_in_thread
-                parameters=[
-                    ActionParameter("thread_hash", True, str, "Hash of the thread to query for replies")
-                ],
-                description="Fetch cast replies (thread)"
-            )
+            "get-latest-casts": self.get_latest_casts,
+            "post-cast": self.post_cast,
+            "read-timeline": self.read_timeline,
+            "like-cast": self.like_cast,
+            "requote-cast": self.requote_cast,
+            "reply-to-cast": self.reply_to_cast,
+            "get-cast-replies": self.get_cast_replies
         }
     
     def _get_credentials(self) -> Dict[str, str]:
@@ -133,7 +82,7 @@ class FarcasterConnection(BaseConnection):
         logger.debug("All required credentials found")
         return credentials
 
-    def configure(self) -> bool:
+    def configure(self, **kwargs: Any) -> bool:
         """Sets up Farcaster bot authentication"""
         logger.info("\nStarting Farcaster authentication setup")
 

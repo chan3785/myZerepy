@@ -2,7 +2,7 @@ import logging
 import os
 import requests
 import asyncio
-from typing import Dict, Any, Optional, cast
+from typing import Dict, Any, Optional, cast, List
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Confirmed
 from solders.keypair import Keypair  # type: ignore
@@ -51,8 +51,6 @@ class SolanaConfigurationError(SolanaConnectionError):
 
 class SolanaConnection(BaseConnection):
     _client: Optional[AsyncClient]
-    
-    _client: Optional[AsyncClient]
     _wallet: Optional[Keypair]
     _jupiter: Optional[Jupiter]
     
@@ -74,8 +72,6 @@ class SolanaConnection(BaseConnection):
             self._client = AsyncClient(cast(SolanaConfig, self.config).rpc)
         return self._client
 
-    _wallet: Optional[Keypair]
-    
     def _get_wallet(self) -> Keypair:
         if not self._wallet:
             creds = self._get_credentials()
@@ -87,13 +83,14 @@ class SolanaConnection(BaseConnection):
         logger.debug("Retrieving Solana Credentials")
         load_dotenv()
         required_vars = {"SOLANA_PRIVATE_KEY": "solana wallet private key"}
-        credentials = {}
-        missing = []
+        credentials: Dict[str, str] = {}
+        missing: List[str] = []
 
         for env_var, description in required_vars.items():
             value = os.getenv(env_var)
             if not value:
                 missing.append(description)
+                continue
             credentials[env_var] = value
 
         if missing:
@@ -101,12 +98,11 @@ class SolanaConnection(BaseConnection):
             raise SolanaConfigurationError(error_msg)
 
         # Validate the private key format
-        Keypair.from_base58_string(credentials["SOLANA_PRIVATE_KEY"])
+        private_key = credentials["SOLANA_PRIVATE_KEY"]
+        Keypair.from_base58_string(private_key)
         logger.debug("All required credentials found")
         return credentials
 
-    _jupiter: Optional[Jupiter]
-    
     def _get_jupiter(self, keypair: Keypair, async_client: AsyncClient) -> Jupiter:
         if not self._jupiter:
             self._jupiter = Jupiter(
@@ -134,112 +130,21 @@ class SolanaConnection(BaseConnection):
     def register_actions(self) -> None:
         """Register available Solana actions"""
         self.actions = {
-            "transfer": Action(
-                name="transfer",
-                parameters=[
-                    ActionParameter("to_address", True, str, "Destination address"),
-                    ActionParameter("amount", True, float, "Amount to transfer"),
-                    ActionParameter(
-                        "token_mint",
-                        False,
-                        str,
-                        "Token mint address (optional for SOL)",
-                    ),
-                ],
-                description="Transfer SOL or SPL tokens",
-            ),
-            "trade": Action(
-                name="trade",
-                parameters=[
-                    ActionParameter(
-                        "output_mint", True, str, "Output token mint address"
-                    ),
-                    ActionParameter("input_amount", True, float, "Input amount"),
-                    ActionParameter(
-                        "input_mint", False, str, "Input token mint (optional for SOL)"
-                    ),
-                    ActionParameter(
-                        "slippage_bps", False, int, "Slippage in basis points"
-                    ),
-                ],
-                description="Swap tokens using Jupiter",
-            ),
-            "get-balance": Action(
-                name="get-balance",
-                parameters=[
-                    ActionParameter(
-                        "token_address",
-                        False,
-                        str,
-                        "Token mint address (optional for SOL)",
-                    )
-                ],
-                description="Check SOL or token balance",
-            ),
-            "stake": Action(
-                name="stake",
-                parameters=[
-                    ActionParameter("amount", True, float, "Amount of SOL to stake")
-                ],
-                description="Stake SOL",
-            ),
-            "lend-assets": Action(
-                name="lend-assets",
-                parameters=[ActionParameter("amount", True, float, "Amount to lend")],
-                description="Lend assets",
-            ),
-            "request-faucet": Action(
-                name="request-faucet",
-                parameters=[],
-                description="Request funds from faucet for testing",
-            ),
-            "deploy-token": Action(
-                name="deploy-token",
-                parameters=[
-                    ActionParameter(
-                        "decimals", False, int, "Token decimals (default 9)"
-                    )
-                ],
-                description="Deploy a new token",
-            ),
-            "fetch-price": Action(
-                name="fetch-price",
-                parameters=[
-                    ActionParameter(
-                        "token_id", True, str, "Token ID to fetch price for"
-                    )
-                ],
-                description="Get token price",
-            ),
-            "get-tps": Action(
-                name="get-tps", parameters=[], description="Get current Solana TPS"
-            ),
-            "get-token-by-ticker": Action(
-                name="get-token-by-ticker",
-                parameters=[
-                    ActionParameter("ticker", True, str, "Token ticker symbol")
-                ],
-                description="Get token data by ticker symbol",
-            ),
-            "get-token-by-address": Action(
-                name="get-token-by-address",
-                parameters=[ActionParameter("mint", True, str, "Token mint address")],
-                description="Get token data by mint address",
-            ),
-            "launch-pump-token": Action(
-                name="launch-pump-token",
-                parameters=[
-                    ActionParameter("token_name", True, str, "Name of the token"),
-                    ActionParameter("token_ticker", True, str, "Token ticker symbol"),
-                    ActionParameter("description", True, str, "Token description"),
-                    ActionParameter("image_url", True, str, "Token image URL"),
-                    ActionParameter("options", False, dict, "Additional token options"),
-                ],
-                description="Launch a Pump & Fun token",
-            ),
+            "transfer": self.transfer,
+            "trade": self.trade,
+            "get-balance": self.get_balance,
+            "stake": self.stake,
+            "lend-assets": self.lend_assets,
+            "request-faucet": self.request_faucet,
+            "deploy-token": self.deploy_token,
+            "fetch-price": self.fetch_price,
+            "get-tps": self.get_tps,
+            "get-token-by-ticker": self.get_token_by_ticker,
+            "get-token-by-address": self.get_token_by_address,
+            "launch-pump-token": self.launch_pump_token
         }
 
-    def configure(self) -> bool:
+    def configure(self, **kwargs: Any) -> bool:
         """Sets up Solana credentials"""
         logger.info("\n🔑 SOLANA CREDENTIALS SETUP")
 
@@ -305,16 +210,19 @@ class SolanaConnection(BaseConnection):
             return False
 
     def transfer(
-        self, to_address: str, amount: float, token_mint: Optional[str] = None
+        self, to_address: str, amount: float, token_mint: str = ""
     ) -> str:
-        res = SolanaTransferHelper.transfer(
-            self._get_connection_async(),
-            self._get_wallet(),
-            to_address,
-            amount,
-            token_mint,
-        )
-        res = asyncio.run(res)
+        async def _transfer() -> str:
+            res = await SolanaTransferHelper.transfer(
+                self._get_connection_async(),
+                self._get_wallet(),
+                to_address,
+                amount,
+                token_mint if token_mint else "",
+            )
+            return str(res)
+        
+        res = asyncio.run(_transfer())
         logger.debug(f"Transferred {amount} to {to_address}\nTransaction ID: {res}")
         return res
 
@@ -323,7 +231,7 @@ class SolanaConnection(BaseConnection):
         self,
         output_mint: str,
         input_amount: float,
-        input_mint: Optional[str] = SPL_TOKENS["USDC"],
+        input_mint: str = str(SPL_TOKENS["USDC"]),
         slippage_bps: int = 100,
     ) -> str:
         """Trade tokens using Jupiter"""
@@ -337,35 +245,44 @@ class SolanaConnection(BaseConnection):
         # Use config with proper type casting
         config = cast(SolanaConfig, self.config)
         
-        res = TradeManager.trade(
-            async_client,
-            wallet,
-            jupiter,
-            output_mint,
-            input_amount,
-            input_mint,
-            slippage_bps,
-        )
-        res = asyncio.run(res)
-        return res
+        async def _trade() -> str:
+            res = await TradeManager.trade(
+                async_client,
+                wallet,
+                jupiter,
+                output_mint,
+                input_amount,
+                input_mint,
+                slippage_bps,
+            )
+            return str(res)
+            
+        return asyncio.run(_trade())
 
-    def get_balance(self, token_address: str = None) -> float:
+    def get_balance(self, token_address: str = "") -> float:
         if not token_address:
             logger.info("Getting SOL balance")
         else:
             logger.info(f"Getting balance for {token_address}")
-        res = SolanaReadHelper.get_balance(
-            self._get_connection_async(), self._get_wallet(), token_address
-        )
-        res = asyncio.run(res)
-        return res
+            
+        async def _get_balance() -> float:
+            res = await SolanaReadHelper.get_balance(
+                self._get_connection_async(), self._get_wallet(), token_address if token_address else ""
+            )
+            return float(res)
+            
+        return asyncio.run(_get_balance())
 
     def stake(self, amount: float) -> str:
         logger.info(f"Staking {amount} SOL")
-        res = StakeManager.stake_with_jup(
-            self._get_connection_async(), self._get_wallet(), amount
-        )
-        res = asyncio.run(res)
+        
+        async def _stake() -> str:
+            res = await StakeManager.stake_with_jup(
+                self._get_connection_async(), self._get_wallet(), amount
+            )
+            return str(res)
+            
+        res = asyncio.run(_stake())
         logger.debug(f"Staked {amount} SOL\nTransaction ID: {res}")
         return res
 
@@ -382,8 +299,15 @@ class SolanaConnection(BaseConnection):
 
     def request_faucet(self) -> str:
         logger.info("Requesting faucet funds")
-        res = FaucetManager.request_faucet_funds(self)
-        res = asyncio.run(res)
+        
+        async def _request_faucet() -> str:
+            res = await FaucetManager.request_faucet_funds(
+                self._get_connection_async(),
+                self._get_wallet()
+            )
+            return str(res)
+            
+        res = asyncio.run(_request_faucet())
         logger.debug(f"Requested faucet funds\nTransaction ID: {res}")
         return res
 
@@ -404,18 +328,25 @@ class SolanaConnection(BaseConnection):
 
     # todo: test on mainnet
     def get_tps(self) -> int:
-        res = SolanaPerformanceTracker.fetch_current_tps(self._get_connection_async())
-        res = asyncio.run(res)
-        return res
+        async def _get_tps() -> int:
+            res = await SolanaPerformanceTracker.fetch_current_tps(
+                self._get_connection_async()
+            )
+            return int(res)
+            
+        return asyncio.run(_get_tps())
 
     def get_token_by_ticker(self, ticker: str) -> str:
         ticker = ticker.upper()
         if ticker in SPL_TOKENS:
-            return SPL_TOKENS[ticker]
-        return SolanaReadHelper.get_token_by_ticker(ticker)
+            return str(SPL_TOKENS[ticker])
+        return str(SolanaReadHelper.get_token_by_ticker(ticker))
 
     def get_token_by_address(self, mint: str) -> Dict[str, Any]:
-        return SolanaReadHelper.get_token_by_address(mint)
+        token_data = SolanaReadHelper.get_token_by_address(mint)
+        if isinstance(token_data, dict):
+            return token_data
+        return {"address": str(mint), "data": token_data}
 
     # todo: test on mainnet
     def launch_pump_token(

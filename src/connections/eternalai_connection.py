@@ -57,27 +57,9 @@ class EternalAIConnection(BaseConnection):
     def register_actions(self) -> None:
         """Register available EternalAI actions"""
         self.actions = {
-            "generate-text": Action(
-                name="generate-text",
-                parameters=[
-                    ActionParameter("prompt", True, str, "The input prompt for text generation"),
-                    ActionParameter("system_prompt", True, str, "System prompt to guide the model"),
-                    ActionParameter("model", False, str, "Model to use for generation")
-                ],
-                description="Generate text using EternalAI models"
-            ),
-            "check-model": Action(
-                name="check-model",
-                parameters=[
-                    ActionParameter("model", True, str, "Model name to check availability")
-                ],
-                description="Check if a specific model is available"
-            ),
-            "list-models": Action(
-                name="list-models",
-                parameters=[],
-                description="List all available EternalAI models"
-            )
+            "generate-text": self.generate_text,
+            "check-model": self.check_model,
+            "list-models": self.list_models
         }
 
     def _get_client(self) -> OpenAI:
@@ -90,7 +72,7 @@ class EternalAIConnection(BaseConnection):
             self._client = OpenAI(api_key=api_key, base_url=api_url)
         return self._client
 
-    def configure(self) -> bool:
+    def configure(self, **kwargs: Any) -> bool:
         """Sets up EternalAI API authentication"""
         logger.info("\n🤖 EternalAI API SETUP")
 
