@@ -125,6 +125,7 @@ class FarcasterConfig(BaseConnectionConfig):
     name: str = "farcaster"
     recovery_phrase: Optional[str] = None
     endpoint: Optional[str] = None
+    timeline_read_count: int = Field(default=100, gt=0)
     
 class TwitterConfig(BaseConnectionConfig):
     """Configuration for Twitter/X social network connection.

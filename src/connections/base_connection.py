@@ -14,6 +14,7 @@ class ActionParameter:
 @dataclass
 class Action:
     name: str
+    method: Callable[..., Any]
     parameters: List[ActionParameter]
     description: str
     
@@ -28,12 +29,19 @@ class Action:
                 except ValueError:
                     errors.append(f"Invalid type for {param.name}. Expected {param.type.__name__}")
         return errors
+        
+    def __call__(self, **kwargs: Any) -> Any:
+        """Make Action instances callable like regular methods"""
+        errors = self.validate_params(kwargs)
+        if errors:
+            raise ValueError(f"Invalid parameters: {', '.join(errors)}")
+        return self.method(**kwargs)
 
 T = TypeVar('T', bound=BaseConnectionConfig)
 
 class BaseConnection(ABC):
     config: BaseConnectionConfig
-    actions: Dict[str, Callable[..., Any]]
+    actions: Dict[str, Union[Action, Callable[..., Any]]]
 
     def __init__(self, config: Union[Dict[str, Any], BaseConnectionConfig]) -> None:
         try:
@@ -131,5 +139,10 @@ class BaseConnection(ABC):
         if action_name not in self.actions:
             raise KeyError(f"Unknown action: {action_name}")
             
-        handler = self.actions[action_name]
-        return handler(**kwargs)
+        action = self.actions[action_name]
+        if isinstance(action, Action):
+            errors = action.validate_params(kwargs)
+            if errors:
+                raise ValueError(f"Invalid parameters: {', '.join(errors)}")
+            return action.method(**kwargs)
+        return action(**kwargs)  # For backward compatibility with direct method references
