@@ -77,6 +77,16 @@ class EternalAIConfig(LLMConnectionConfig):
     contract_address: Optional[str] = None
     rpc_url: Optional[str] = None
 
+class HyperbolicConfig(LLMConnectionConfig):
+    """Configuration for Hyperbolic connection"""
+    name: str = "hyperbolic"
+    model: str = "hyperbolic-v1"
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    max_tokens: Optional[int] = Field(default=None, gt=0)
+    top_p: float = Field(default=1.0, ge=0.0, le=1.0)
+    presence_penalty: float = Field(default=0.0, ge=-2.0, le=2.0)
+    frequency_penalty: float = Field(default=0.0, ge=-2.0, le=2.0)
+
 class DiscordConfig(BaseConnectionConfig):
     """Configuration for Discord connection"""
     name: str = "discord"

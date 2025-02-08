@@ -1,9 +1,11 @@
 import logging
 import os
-from typing import Dict, Any
+from typing import Dict, Any, Optional, cast
 from dotenv import load_dotenv, set_key
 from openai import OpenAI
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
+from src.types.connections import HyperbolicConfig
+from src.types.config import BaseConnectionConfig
 
 logger = logging.getLogger("connections.hyperbolic_connection")
 
@@ -20,27 +22,27 @@ class HyperbolicAPIError(HyperbolicConnectionError):
     pass
 
 class HyperbolicConnection(BaseConnection):
+    _client: Optional[OpenAI]
+    
     def __init__(self, config: Dict[str, Any]):
-        super().__init__(config)
+        logger.info("Initializing Hyperbolic connection...")
+        # Validate config before passing to super
+        validated_config = HyperbolicConfig(**config)
+        super().__init__(validated_config)
         self._client = None
 
     @property
     def is_llm_provider(self) -> bool:
         return True
 
-    def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate Hyperbolic configuration from JSON"""
-        required_fields = ["model"]
-        missing_fields = [field for field in required_fields if field not in config]
-        
-        if missing_fields:
-            raise ValueError(f"Missing required configuration fields: {', '.join(missing_fields)}")
-            
-        # Validate model exists (will be checked in detail during configure)
-        if not isinstance(config["model"], str):
-            raise ValueError("model must be a string")
-            
-        return config
+    def validate_config(self, config: Dict[str, Any]) -> BaseConnectionConfig:
+        """Validate Hyperbolic configuration from JSON and convert to Pydantic model"""
+        try:
+            # Convert dict config to Pydantic model
+            validated_config = HyperbolicConfig(**config)
+            return validated_config
+        except Exception as e:
+            raise ValueError(f"Invalid Hyperbolic configuration: {str(e)}")
 
     def register_actions(self) -> None:
         """Register available Hyperbolic actions"""
@@ -147,8 +149,9 @@ class HyperbolicConnection(BaseConnection):
             client = self._get_client()
             
             # Use configured model if none provided
+            config = cast(HyperbolicConfig, self.config)
             if not model:
-                model = self.config["model"]
+                model = config.model
 
             completion = client.chat.completions.create(
                 model=model,
@@ -156,6 +159,11 @@ class HyperbolicConnection(BaseConnection):
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt},
                 ],
+                temperature=config.temperature,
+                max_tokens=config.max_tokens if config.max_tokens else None,
+                top_p=config.top_p,
+                presence_penalty=config.presence_penalty,
+                frequency_penalty=config.frequency_penalty
             )
 
             return completion.choices[0].message.content
