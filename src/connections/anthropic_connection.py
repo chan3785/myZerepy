@@ -1,9 +1,11 @@
 import logging
 import os
-from typing import Dict, Any
+from typing import Dict, Any, Optional, cast
 from dotenv import load_dotenv, set_key
 from anthropic import Anthropic, NotFoundError
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
+from src.types.connections import AnthropicConfig
+from src.types.config import BaseConnectionConfig
 
 logger = logging.getLogger("connections.anthropic_connection")
 
@@ -20,26 +22,26 @@ class AnthropicAPIError(AnthropicConnectionError):
     pass
 
 class AnthropicConnection(BaseConnection):
+    _client: Optional[Anthropic]
+    
     def __init__(self, config: Dict[str, Any]):
-        super().__init__(config)
+        # Validate config before passing to super
+        validated_config = AnthropicConfig(**config)
+        super().__init__(validated_config)
         self._client = None
 
     @property
     def is_llm_provider(self) -> bool:
         return True
 
-    def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate Anthropic configuration from JSON"""
-        required_fields = ["model"]
-        missing_fields = [field for field in required_fields if field not in config]
-        
-        if missing_fields:
-            raise ValueError(f"Missing required configuration fields: {', '.join(missing_fields)}")
-            
-        if not isinstance(config["model"], str):
-            raise ValueError("model must be a string")
-            
-        return config
+    def validate_config(self, config: Dict[str, Any]) -> BaseConnectionConfig:
+        """Validate Anthropic configuration from JSON and convert to Pydantic model"""
+        try:
+            # Convert dict config to Pydantic model
+            validated_config = AnthropicConfig(**config)
+            return validated_config
+        except Exception as e:
+            raise ValueError(f"Invalid Anthropic configuration: {str(e)}")
 
     def register_actions(self) -> None:
         """Register available Anthropic actions"""
@@ -135,7 +137,7 @@ class AnthropicConnection(BaseConnection):
             
             # Use configured model if none provided
             if not model:
-                model = self.config["model"]
+                model = cast(AnthropicConfig, self.config).model
 
             message = client.messages.create(
                 model=model,
