@@ -2,10 +2,16 @@ import logging
 import os
 import requests
 import asyncio
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, cast
+from solana.rpc.async_api import AsyncClient
+from solana.rpc.commitment import Confirmed
+from solders.keypair import Keypair  # type: ignore
+from jupiter_python_sdk.jupiter import Jupiter
 
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
 from src.types import JupiterTokenData
+from src.types.connections import SolanaConfig
+from src.types.config import BaseConnectionConfig
 from src.constants import LAMPORTS_PER_SOL, SPL_TOKENS
 from src.helpers.solana.pumpfun import PumpfunTokenManager
 from src.helpers.solana.faucet import FaucetManager
@@ -44,21 +50,37 @@ class SolanaConfigurationError(SolanaConnectionError):
 
 
 class SolanaConnection(BaseConnection):
+    _client: Optional[AsyncClient]
+    
+    _client: Optional[AsyncClient]
+    _wallet: Optional[Keypair]
+    _jupiter: Optional[Jupiter]
+    
     def __init__(self, config: Dict[str, Any]):
         logger.info("Initializing Solana connection...")
-        super().__init__(config)
+        # Validate config before passing to super
+        validated_config = SolanaConfig(**config)
+        super().__init__(validated_config)
+        self._client = None
+        self._wallet = None
+        self._jupiter = None
 
     @property
     def is_llm_provider(self) -> bool:
         return False
 
     def _get_connection_async(self) -> AsyncClient:
-        conn = AsyncClient(self.config["rpc"])
-        return conn
+        if not self._client:
+            self._client = AsyncClient(cast(SolanaConfig, self.config).rpc)
+        return self._client
 
-    def _get_wallet(self):
-        creds = self._get_credentials()
-        return Keypair.from_base58_string(creds["SOLANA_PRIVATE_KEY"])
+    _wallet: Optional[Keypair]
+    
+    def _get_wallet(self) -> Keypair:
+        if not self._wallet:
+            creds = self._get_credentials()
+            self._wallet = Keypair.from_base58_string(creds["SOLANA_PRIVATE_KEY"])
+        return self._wallet
 
     def _get_credentials(self) -> Dict[str, str]:
         """Get Solana credentials from environment with validation"""
@@ -78,37 +100,36 @@ class SolanaConnection(BaseConnection):
             error_msg = f"Missing Solana credentials: {', '.join(missing)}"
             raise SolanaConfigurationError(error_msg)
 
+        # Validate the private key format
         Keypair.from_base58_string(credentials["SOLANA_PRIVATE_KEY"])
         logger.debug("All required credentials found")
         return credentials
 
-    def _get_jupiter(self, keypair, async_client):
-        jupiter = Jupiter(
-            async_client=async_client,
-            keypair=keypair,
-            quote_api_url="https://quote-api.jup.ag/v6/quote?",
-            swap_api_url="https://quote-api.jup.ag/v6/swap",
-            open_order_api_url="https://jup.ag/api/limit/v1/createOrder",
-            cancel_orders_api_url="https://jup.ag/api/limit/v1/cancelOrders",
-            query_open_orders_api_url="https://jup.ag/api/limit/v1/openOrders?wallet=",
-            query_order_history_api_url="https://jup.ag/api/limit/v1/orderHistory",
-            query_trade_history_api_url="https://jup.ag/api/limit/v1/tradeHistory",
-        )
-        return jupiter
-
-    def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate Solana configuration from JSON"""
-        required_fields = ["rpc"]
-        missing_fields = [field for field in required_fields if field not in config]
-        if missing_fields:
-            raise ValueError(
-                f"Missing required configuration fields: {', '.join(missing_fields)}"
+    _jupiter: Optional[Jupiter]
+    
+    def _get_jupiter(self, keypair: Keypair, async_client: AsyncClient) -> Jupiter:
+        if not self._jupiter:
+            self._jupiter = Jupiter(
+                async_client=async_client,
+                keypair=keypair,
+                quote_api_url="https://quote-api.jup.ag/v6/quote?",
+                swap_api_url="https://quote-api.jup.ag/v6/swap",
+                open_order_api_url="https://jup.ag/api/limit/v1/createOrder",
+                cancel_orders_api_url="https://jup.ag/api/limit/v1/cancelOrders",
+                query_open_orders_api_url="https://jup.ag/api/limit/v1/openOrders?wallet=",
+                query_order_history_api_url="https://jup.ag/api/limit/v1/orderHistory",
+                query_trade_history_api_url="https://jup.ag/api/limit/v1/tradeHistory",
             )
+        return self._jupiter
 
-        if not isinstance(config["rpc"], str):
-            raise ValueError("rpc must be a positive integer")
-
-        return config
+    def validate_config(self, config: Dict[str, Any]) -> BaseConnectionConfig:
+        """Validate Solana configuration from JSON and convert to Pydantic model"""
+        try:
+            # Convert dict config to Pydantic model
+            validated_config = SolanaConfig(**config)
+            return validated_config
+        except Exception as e:
+            raise ValueError(f"Invalid Solana configuration: {str(e)}")
 
     def register_actions(self) -> None:
         """Register available Solana actions"""
@@ -305,10 +326,17 @@ class SolanaConnection(BaseConnection):
         input_mint: Optional[str] = SPL_TOKENS["USDC"],
         slippage_bps: int = 100,
     ) -> str:
+        """Trade tokens using Jupiter"""
         logger.info(f"Swapping {input_amount} for {output_mint}")
+        
+        # Get cached instances with proper type hints
         wallet = self._get_wallet()
         async_client = self._get_connection_async()
         jupiter = self._get_jupiter(wallet, async_client)
+        
+        # Use config with proper type casting
+        config = cast(SolanaConfig, self.config)
+        
         res = TradeManager.trade(
             async_client,
             wallet,
