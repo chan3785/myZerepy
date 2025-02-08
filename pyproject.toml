@@ -35,6 +35,8 @@ server = ["fastapi", "uvicorn", "requests"]
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.15.0"
+types-requests = "^2.32.0.20241016"
+types-requests-oauthlib = "^2.0.0.20250119"
 
 [tool.mypy]
 python_version = "3.11"
