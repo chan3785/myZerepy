@@ -48,50 +48,12 @@ class TwitterConnection(BaseConnection):
     def register_actions(self) -> None:
         """Register available Twitter actions"""
         self.actions = {
-            "get-latest-tweets": Action(
-                name="get-latest-tweets",
-                parameters=[
-                    ActionParameter("username", True, str, "Twitter username to get tweets from"),
-                    ActionParameter("count", False, int, "Number of tweets to retrieve")
-                ],
-                description="Get the latest tweets from a user"
-            ),
-            "post-tweet": Action(
-                name="post-tweet",
-                parameters=[
-                    ActionParameter("message", True, str, "Text content of the tweet")
-                ],
-                description="Post a new tweet"
-            ),
-            "read-timeline": Action(
-                name="read-timeline",
-                parameters=[
-                    ActionParameter("count", False, int, "Number of tweets to read from timeline")
-                ],
-                description="Read tweets from user's timeline"
-            ),
-            "like-tweet": Action(
-                name="like-tweet",
-                parameters=[
-                    ActionParameter("tweet_id", True, str, "ID of the tweet to like")
-                ],
-                description="Like a specific tweet"
-            ),
-            "reply-to-tweet": Action(
-                name="reply-to-tweet",
-                parameters=[
-                    ActionParameter("tweet_id", True, str, "ID of the tweet to reply to"),
-                    ActionParameter("message", True, str, "Reply message content")
-                ],
-                description="Reply to an existing tweet"
-            ),
-            "get-tweet-replies": Action(
-                name="get-tweet-replies",
-                parameters=[
-                    ActionParameter("tweet_id", True, str, "ID of the tweet to query for replies")
-                ],
-                description="Fetch tweet replies"
-            )
+            "get-latest-tweets": self.get_latest_tweets,
+            "post-tweet": self.post_tweet,
+            "read-timeline": self.read_timeline,
+            "like-tweet": self.like_tweet,
+            "reply-to-tweet": self.reply_to_tweet,
+            "get-tweet-replies": self.get_tweet_replies
         }
 
     def _get_credentials(self) -> Dict[str, str]:
@@ -123,7 +85,7 @@ class TwitterConnection(BaseConnection):
         logger.debug("All required credentials found")
         return credentials
      
-    def _make_request(self, method: str, endpoint: str, **kwargs) -> dict:
+    def _make_request(self, method: str, endpoint: str, **kwargs: Any) -> Dict[str, Any]:
         """
         Make a request to the Twitter API with error handling
 
@@ -151,7 +113,8 @@ class TwitterConnection(BaseConnection):
                 )
 
             logger.debug(f"Request successful: {response.status_code}")
-            return response.json()
+            response_data: Dict[str, Any] = response.json()
+            return response_data
 
         except Exception as e:
             raise TwitterAPIError(f"API request failed: {str(e)}")
@@ -205,16 +168,16 @@ class TwitterConnection(BaseConnection):
             raise ValueError(error_msg)
         logger.debug(f"Tweet text validation passed for {context.lower()}")
 
-    def configure(self) -> None:
+    def configure(self, **kwargs: Any) -> bool:
         """Sets up Twitter API authentication"""
         logger.info("Starting Twitter authentication setup")
 
         # Check existing configuration
         if self.is_configured(verbose=False):
             logger.info("Twitter API is already configured")
-            response = input("Do you want to reconfigure? (y/n): ")
+            response = kwargs.get("response") or input("Do you want to reconfigure? (y/n): ")
             if response.lower() != 'y':
-                return
+                return True
 
         setup_instructions = [
             "\n🐦 TWITTER AUTHENTICATION SETUP",
@@ -232,9 +195,9 @@ class TwitterConnection(BaseConnection):
             logger.info("\nPlease enter your Twitter API credentials:")
             credentials = {
                 'consumer_key':
-                input("Enter your API Key (consumer key): "),
+                kwargs.get("consumer_key") or input("Enter your API Key (consumer key): "),
                 'consumer_secret':
-                input("Enter your API Key Secret (consumer secret): ")
+                kwargs.get("consumer_secret") or input("Enter your API Key Secret (consumer secret): ")
             }
 
             logger.info("Starting OAuth authentication process...")
@@ -262,7 +225,7 @@ class TwitterConnection(BaseConnection):
             ]
             logger.info("\n".join(auth_instructions))
 
-            verifier = input("3. Please enter the PIN code here: ")
+            verifier = kwargs.get("verifier") or input("3. Please enter the PIN code here: ")
 
             # Get access token
             access_token_url = "https://api.twitter.com/oauth/access_token"
@@ -320,9 +283,9 @@ class TwitterConnection(BaseConnection):
         except Exception as e:
             error_msg = f"Setup failed: {str(e)}"
             logger.error(error_msg)
-            raise TwitterConfigurationError(error_msg)
+            return False
 
-    def is_configured(self, verbose = False) -> bool:
+    def is_configured(self, verbose: bool = False) -> bool:
         """Check if Twitter credentials are configured and valid"""
         logger.debug("Checking Twitter configuration status")
         try:
@@ -344,15 +307,10 @@ class TwitterConnection(BaseConnection):
                 logger.error(f"Configuration validation failed: {error_msg}")
             return False
 
-    def perform_action(self, action_name: str, kwargs) -> Any:
+    def perform_action(self, action_name: str, **kwargs: Any) -> Any:
         """Execute a Twitter action with validation"""
         if action_name not in self.actions:
             raise KeyError(f"Unknown action: {action_name}")
-
-        action = self.actions[action_name]
-        errors = action.validate_params(kwargs)
-        if errors:
-            raise ValueError(f"Invalid parameters: {', '.join(errors)}")
 
         # Add config parameters if not provided
         if action_name == "read-timeline" and "count" not in kwargs:
@@ -364,7 +322,7 @@ class TwitterConnection(BaseConnection):
         method = getattr(self, method_name)
         return method(**kwargs)
 
-    def read_timeline(self, count: int = None, **kwargs) -> list:
+    def read_timeline(self, count: Optional[int] = None, **kwargs: Any) -> List[Dict[str, Any]]:
         """Read tweets from the user's timeline"""
         if count is None:
             config = cast(TwitterConfig, self.config)
@@ -414,7 +372,7 @@ class TwitterConnection(BaseConnection):
     def get_latest_tweets(self,
                           username: str,
                           count: int = 10,
-                          **kwargs) -> list:
+                          **kwargs: Any) -> List[Dict[str, Any]]:
         """Get latest tweets for a user"""
         logger.debug(f"Getting latest tweets for {username}, count: {count}")
 
@@ -434,7 +392,7 @@ class TwitterConnection(BaseConnection):
         return tweets
 
 
-    def post_tweet(self, message: str, **kwargs) -> dict:
+    def post_tweet(self, message: str, **kwargs: Any) -> Dict[str, Any]:
         """Post a new tweet"""
         logger.debug("Posting new tweet")
         self._validate_tweet_text(message)
@@ -444,7 +402,7 @@ class TwitterConnection(BaseConnection):
         logger.info("Tweet posted successfully")
         return response
 
-    def reply_to_tweet(self, tweet_id: str, message: str, **kwargs) -> dict:
+    def reply_to_tweet(self, tweet_id: str, message: str, **kwargs: Any) -> Dict[str, Any]:
         """Reply to an existing tweet"""
         logger.debug(f"Replying to tweet {tweet_id}")
         self._validate_tweet_text(message, "Reply")
@@ -461,7 +419,7 @@ class TwitterConnection(BaseConnection):
         logger.info("Reply posted successfully")
         return response
 
-    def like_tweet(self, tweet_id: str, **kwargs) -> dict:
+    def like_tweet(self, tweet_id: str, **kwargs: Any) -> Dict[str, Any]:
         """Like a tweet"""
         logger.debug(f"Liking tweet {tweet_id}")
         credentials = self._get_credentials()
@@ -474,7 +432,7 @@ class TwitterConnection(BaseConnection):
         logger.info("Tweet liked successfully")
         return response
     
-    def get_tweet_replies(self, tweet_id: str, count: int = 10, **kwargs) -> List[dict]:
+    def get_tweet_replies(self, tweet_id: str, count: int = 10, **kwargs: Any) -> List[Dict[str, Any]]:
         """Fetch replies to a specific tweet"""
         logger.debug(f"Fetching replies for tweet {tweet_id}, count: {count}")
         

@@ -147,7 +147,7 @@ class DiscordConnection(BaseConnection):
         """Lists all Discord channels under the server"""
         request_path = f"/guilds/{server_id}/channels"
         response = self._get_request(request_path)
-        text_channels = self._filter_channels_for_type_text(response)
+        text_channels = self._filter_channels_for_type_text(cast(List[Dict[str, Any]], response))
         formatted_response = self._format_channels(text_channels)
 
         logger.info(f"Retrieved {len(formatted_response)} channels")
@@ -158,7 +158,7 @@ class DiscordConnection(BaseConnection):
         logger.debug("Sending a new message")
         request_path = f"/channels/{channel_id}/messages?limit={count}"
         response = self._get_request(request_path)
-        formatted_response = self._format_messages(response)
+        formatted_response = self._format_messages(cast(List[Dict[str, Any]], response))
 
         logger.info(f"Retrieved {len(formatted_response)} messages")
         return formatted_response
@@ -206,7 +206,7 @@ class DiscordConnection(BaseConnection):
         return formatted_response
 
     def react_to_message(
-        self, channel_id: str, message_id: str, emoji_name: str, **kwargs
+        self, channel_id: str, message_id: str, emoji_name: str, **kwargs: Any
     ) -> None:
         """React to a message"""
         logger.debug("Reacting to a message")
