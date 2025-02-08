@@ -35,7 +35,8 @@ class SonicConnection(BaseConnection):
         super().__init__(config)
         self._initialize_web3()
         self.ERC20_ABI = ERC20_ABI
-        self.NATIVE_TOKEN = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+        self.WRAPPED_SONIC = "0x039e2fB66102314Ce7b64Ce5Ce3E5183bc94aD38"
+        self.WRAPPED_ETH = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
         self.aggregator_api = "https://aggregator-api.kyberswap.com/sonic/api/v1"
 
     def _get_explorer_link(self, tx_hash: str) -> str:
