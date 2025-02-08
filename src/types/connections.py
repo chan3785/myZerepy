@@ -41,3 +41,10 @@ class TwitterConfig(BaseConnectionConfig):
     access_token: Optional[str] = None
     access_token_secret: Optional[str] = None
     timeline_read_count: int = Field(default=10, gt=0)
+
+class TogetherConfig(LLMConnectionConfig):
+    """Configuration for Together AI connection"""
+    name: str = "together"
+    model: str = "mistralai/Mixtral-8x7B-Instruct-v0.1"
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    max_tokens: Optional[int] = Field(default=None, gt=0)
