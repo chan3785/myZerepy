@@ -58,115 +58,21 @@ class DiscordConnection(BaseConnection):
     def register_actions(self) -> None:
         """Register available Discord actions"""
         self.actions = {
-            "read-messages": Action(
-                name="read-messages",
-                parameters=[
-                    ActionParameter(
-                        "channel_id",
-                        True,
-                        str,
-                        "The channel id to get messages from",
-                    ),
-                    ActionParameter(
-                        "count",
-                        False,
-                        int,
-                        "Number of messages to retrieve",
-                    ),
-                ],
-                description="Get the latest messages from a channel",
-            ),
-            "read-mentioned-messages": Action(
-                name="read-mentioned-messages",
-                parameters=[
-                    ActionParameter(
-                        "channel_id",
-                        True,
-                        str,
-                        "The channel id to get messages from",
-                    ),
-                    ActionParameter(
-                        "count",
-                        False,
-                        int,
-                        "Number of messages to retrieve",
-                    ),
-                ],
-                description="Get the latest messages that mention the bot",
-            ),
-            "post-message": Action(
-                name="post-message",
-                parameters=[
-                    ActionParameter(
-                        "channel_id",
-                        True,
-                        str,
-                        "The channel id for the message to be posted in",
-                    ),
-                    ActionParameter(
-                        "message", True, str, "Text content of the message"
-                    ),
-                ],
-                description="Post a new message",
-            ),
-            "reply-to-message": Action(
-                name="reply-to-message",
-                parameters=[
-                    ActionParameter(
-                        "channel_id",
-                        True,
-                        str,
-                        "The channel id to get messages from",
-                    ),
-                    ActionParameter(
-                        "message_id", True, str, "ID of the message to reply to"
-                    ),
-                    ActionParameter("message", True, str, "Reply message content"),
-                ],
-                description="Reply to an existing message",
-            ),
-            "react-to-message": Action(
-                name="react-to-message",
-                parameters=[
-                    ActionParameter(
-                        "channel_id",
-                        True,
-                        str,
-                        "The channel id for the message to be posted in",
-                    ),
-                    ActionParameter(
-                        "message_id", True, str, "ID of the message to reply to"
-                    ),
-                    ActionParameter(
-                        "emoji_name",
-                        False,
-                        str,
-                        "Name of the emoji to put on the message",
-                    ),
-                ],
-                description="Post a new message",
-            ),
-            "list-channels": Action(
-                name="list-channels",
-                parameters=[
-                    ActionParameter(
-                        "server_id",
-                        False,
-                        str,
-                        "The server id to list channels from",
-                    ),
-                ],
-                description="List all the channels for a specified discord server",
-            ),
+            "read-messages": self.read_messages,
+            "read-mentioned-messages": self.read_mentioned_messages,
+            "post-message": self.post_message,
+            "reply-to-message": self.reply_to_message,
+            "react-to-message": self.react_to_message,
+            "list-channels": self.list_channels
         }
 
-    def configure(self) -> bool:
+    def configure(self, **kwargs: Any) -> bool:
         """Sets up Discord API authentication"""
         print("\n🤖 DISCORD API SETUP")
 
         if self.is_configured():
             print("\nDiscord API is already configured.")
-            response = input("Do you want to reconfigure? (y/n): ")
+            response = kwargs.get("response") or input("Do you want to reconfigure? (y/n): ")
             if response.lower() != "y":
                 return True
 
@@ -179,7 +85,7 @@ class DiscordConnection(BaseConnection):
         logger.info("\n".join(setup_instructions))
         print_h_bar()
 
-        api_key = input("\nEnter your Discord token: ")
+        api_key = kwargs.get("api_key") or input("\nEnter your Discord token: ")
 
         try:
             if not os.path.exists(".env"):
@@ -212,14 +118,10 @@ class DiscordConnection(BaseConnection):
                 logger.debug(f"Configuration check failed: {e}")
             return False
 
-    def perform_action(self, action_name: str, kwargs) -> Any:
+    def perform_action(self, action_name: str, **kwargs: Any) -> Any:
+        """Execute a Discord action with validation"""
         if action_name not in self.actions:
             raise KeyError(f"Unknown action: {action_name}")
-
-        action = self.actions[action_name]
-        errors = action.validate_params(kwargs)
-        if errors:
-            raise ValueError(f"Invalid parameters: {', '.join(errors)}")
 
         # Add config parameters if not provided
         config = cast(DiscordConfig, self.config)
@@ -241,7 +143,7 @@ class DiscordConnection(BaseConnection):
         method = getattr(self, method_name)
         return method(**kwargs)
 
-    def list_channels(self, server_id: str, **kwargs) -> dict:
+    def list_channels(self, server_id: str, **kwargs: Any) -> List[Dict[str, Any]]:
         """Lists all Discord channels under the server"""
         request_path = f"/guilds/{server_id}/channels"
         response = self._get_request(request_path)
@@ -251,7 +153,7 @@ class DiscordConnection(BaseConnection):
         logger.info(f"Retrieved {len(formatted_response)} channels")
         return formatted_response
 
-    def read_messages(self, channel_id: str, count: int, **kwargs) -> dict:
+    def read_messages(self, channel_id: str, count: int, **kwargs: Any) -> List[Dict[str, Any]]:
         """Reading messages in a channel"""
         logger.debug("Sending a new message")
         request_path = f"/channels/{channel_id}/messages?limit={count}"
@@ -261,7 +163,7 @@ class DiscordConnection(BaseConnection):
         logger.info(f"Retrieved {len(formatted_response)} messages")
         return formatted_response
 
-    def read_mentioned_messages(self, channel_id: str, count: int, **kwargs) -> dict:
+    def read_mentioned_messages(self, channel_id: str, count: int, **kwargs: Any) -> List[Dict[str, Any]]:
         """Reads messages in a channel and filters for bot mentioned messages"""
         messages = self.read_messages(channel_id, count)
         mentioned_messages = self._filter_message_for_bot_mentions(messages)
@@ -269,7 +171,7 @@ class DiscordConnection(BaseConnection):
         logger.info(f"Retrieved {len(mentioned_messages)} mentioned messages")
         return mentioned_messages
 
-    def post_message(self, channel_id: str, message: str, **kwargs) -> dict:
+    def post_message(self, channel_id: str, message: str, **kwargs: Any) -> Dict[str, Any]:
         """Send a new message"""
         logger.debug("Sending a new message")
 
@@ -282,8 +184,8 @@ class DiscordConnection(BaseConnection):
         return formatted_response
 
     def reply_to_message(
-        self, channel_id: str, message_id: str, message: str, **kwargs
-    ) -> dict:
+        self, channel_id: str, message_id: str, message: str, **kwargs: Any
+    ) -> Dict[str, Any]:
         """Reply to a message"""
         logger.debug("Replying to a message")
 
@@ -317,7 +219,7 @@ class DiscordConnection(BaseConnection):
         logger.info("Reacted to message successfully")
         return
 
-    def _format_reply_message(self, reply_message: dict) -> dict:
+    def _format_reply_message(self, reply_message: Dict[str, Any]) -> Dict[str, Any]:
         """Helper method to format reply messages"""
         mentions = []
         for mention in reply_message["mentions"]:
@@ -331,7 +233,7 @@ class DiscordConnection(BaseConnection):
             "mentions": mentions,
         }
 
-    def _format_posted_message(self, posted_message: dict) -> dict:
+    def _format_posted_message(self, posted_message: Dict[str, Any]) -> Dict[str, Any]:
         """Helper method to format posted messages"""
         mentions = []
         for mention in posted_message["mentions"]:
@@ -345,7 +247,7 @@ class DiscordConnection(BaseConnection):
             "mentions": mentions,
         }
 
-    def _format_messages(self, messages: dict) -> dict:
+    def _format_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Helper method to format messages"""
         formatted_messages = []
         for message in messages:
@@ -363,7 +265,7 @@ class DiscordConnection(BaseConnection):
             formatted_messages.append(formatted_message)
         return formatted_messages
 
-    def _format_channels(self, channels: dict) -> dict:
+    def _format_channels(self, channels: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Helper method to format channels"""
         formatted_channels = []
         for channel in channels:
@@ -390,7 +292,7 @@ class DiscordConnection(BaseConnection):
             )
         return
 
-    def _post_request(self, url_path: str, payload: str) -> dict:
+    def _post_request(self, url_path: str, payload: str) -> Dict[str, Any]:
         """Helper method to make POST request"""
         url = f"{self.base_url}{url_path}"
         headers = {
@@ -405,7 +307,7 @@ class DiscordConnection(BaseConnection):
             )
         return json.loads(response.text)
 
-    def _get_request(self, url_path: str) -> str:
+    def _get_request(self, url_path: str) -> Dict[str, Any]:
         """Helper method to make GET request"""
         url = f"{self.base_url}{url_path}"
         headers = {
@@ -439,7 +341,7 @@ class DiscordConnection(BaseConnection):
         except Exception as e:
             raise DiscordConnectionError(f"Connection test failed: {e}")
 
-    def _filter_channels_for_type_text(self, data):
+    def _filter_channels_for_type_text(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Helper method to filter for only channels that are text channels"""
         filtered_data = []
         for item in data:
@@ -449,8 +351,8 @@ class DiscordConnection(BaseConnection):
 
     def _filter_message_for_bot_mentions(
         self,
-        data,
-    ):
+        data: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """Helper method to filter for messages that mention the bot"""
         filtered_data = []
         for item in data:
