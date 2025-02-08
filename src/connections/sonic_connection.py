@@ -169,19 +169,26 @@ class SonicConnection(BaseConnection):
     def _get_web3(self, verbose: bool = False) -> Optional[Web3]:
         """Get a validated Web3 instance if available"""
         web3 = self._web3
-        if not web3 or not self._is_web3_instance(web3):
+        if web3 is None:
             if verbose:
                 logger.error("Web3 not initialized")
             return None
 
+        if not isinstance(web3, Web3):
+            if verbose:
+                logger.error("Invalid Web3 instance")
+            return None
+
+        # At this point, mypy knows web3 is a Web3 instance
+        web3_instance: Web3 = web3
+
         try:
-            # After this point, we know web3 is a Web3 instance
-            if not web3.is_connected():
+            if not web3_instance.is_connected():
                 if verbose:
                     logger.error("Not connected to Sonic network")
                 return None
 
-            return web3
+            return web3_instance
         except Exception as e:
             if verbose:
                 logger.error(f"Failed to check connection: {e}")
