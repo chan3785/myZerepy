@@ -193,15 +193,10 @@ class FarcasterConnection(BaseConnection):
                 logger.error(f"Configuration validation failed: {error_msg}")
             return False
     
-    def perform_action(self, action_name: str, kwargs) -> Any:
-        """Execute a Farcaster action with validation"""
+    def perform_action(self, action_name: str, **kwargs: Any) -> Any:
+        """Execute an action with validation"""
         if action_name not in self.actions:
             raise KeyError(f"Unknown action: {action_name}")
-
-        action = self.actions[action_name]
-        errors = action.validate_params(kwargs)
-        if errors:
-            raise ValueError(f"Invalid parameters: {', '.join(errors)}")
 
         # Add config parameters if not provided
         if action_name == "read-timeline" and "count" not in kwargs:

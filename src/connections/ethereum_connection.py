@@ -640,8 +640,8 @@ class EthereumConnection(BaseConnection):
         except Exception as e:
             return f"Swap failed: {str(e)}"
 
-    def perform_action(self, action_name: str, kwargs: Dict[str, Any]) -> Any:
-        """Execute an Ethereum action with validation"""
+    def perform_action(self, action_name: str, **kwargs: Any) -> Any:
+        """Execute an action with validation"""
         if action_name not in self.actions:
             raise KeyError(f"Unknown action: {action_name}")
 
@@ -650,11 +650,7 @@ class EthereumConnection(BaseConnection):
         if not self.is_configured(verbose=True):
             raise EthereumConnectionError("Ethereum connection is not properly configured")
 
-        action = self.actions[action_name]
-        errors = action.validate_params(kwargs)
-        if errors:
-            raise ValueError(f"Invalid parameters: {', '.join(errors)}")
-
+        # Call the appropriate method based on action name
         method_name = action_name.replace('-', '_')
         method = getattr(self, method_name)
         return method(**kwargs)

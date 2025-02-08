@@ -167,14 +167,9 @@ class TogetherAIConnection(BaseConnection):
             raise TogetherAIAPIError(f"Listing models failed: {e}")
     
     def perform_action(self, action_name: str, **kwargs: Any) -> Any:
-        """Execute a Together AI action with validation"""
+        """Execute an action with validation"""
         if action_name not in self.actions:
             raise KeyError(f"Unknown action: {action_name}")
-
-        action = self.actions[action_name]
-        errors = action.validate_params(kwargs)
-        if errors:
-            raise ValueError(f"Invalid parameters: {', '.join(errors)}")
 
         # Call the appropriate method based on action name
         method_name = action_name.replace('-', '_')
