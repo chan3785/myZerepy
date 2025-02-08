@@ -47,27 +47,9 @@ class XAIConnection(BaseConnection):
     def register_actions(self) -> None:
         """Register available XAI actions"""
         self.actions = {
-            "generate-text": Action(
-                name="generate-text",
-                parameters=[
-                    ActionParameter("prompt", True, str, "The input prompt for text generation"),
-                    ActionParameter("system_prompt", False, str, "System prompt to guide the model"),
-                    ActionParameter("model", False, str, "Model to use for generation")
-                ],
-                description="Generate text using XAI models"
-            ),
-            "check-model": Action(
-                name="check-model",
-                parameters=[
-                    ActionParameter("model", True, str, "Model name to check availability")
-                ],
-                description="Check if a specific model is available"
-            ),
-            "list-models": Action(
-                name="list-models",
-                parameters=[],
-                description="List all available XAI models"
-            )
+            "generate-text": self.generate_text,
+            "check-model": self.check_model,
+            "list-models": self.list_models
         }
 
     def _get_client(self) -> OpenAI:
@@ -83,13 +65,13 @@ class XAIConnection(BaseConnection):
             )
         return self._client
 
-    def configure(self) -> bool:
+    def configure(self, **kwargs: Any) -> bool:
         """Sets up XAI API authentication"""
         logger.info("\n🤖 XAI API SETUP")
 
         if self.is_configured():
             logger.info("\n XAI API is already configured.")
-            response = input("Do you want to reconfigure? (y/n): ")
+            response = kwargs.get("response") or input("Do you want to reconfigure? (y/n): ")
             if response.lower() != 'y':
                 return True
 
@@ -97,7 +79,7 @@ class XAIConnection(BaseConnection):
         logger.info("1. Go to the XAI developer portal (assuming one exists)")
         logger.info("2. Create a new API key for your project.")
         
-        api_key = input("\nEnter your XAI API key: ")
+        api_key = kwargs.get("api_key") or input("\nEnter your XAI API key: ")
 
         try:
             if not os.path.exists('.env'):
@@ -107,7 +89,8 @@ class XAIConnection(BaseConnection):
             set_key('.env', 'XAI_API_KEY', api_key)
             
             # Validate the API key by trying to list models
-            client = OpenAI(api_key=api_key, base_url="https://api.x.ai/v1")
+            config = cast(XAIConfig, self.config)
+            client = OpenAI(api_key=api_key, base_url=config.base_url)
             client.models.list()
 
             logger.info("\n✅ XAI API configuration successfully saved!")
@@ -118,7 +101,7 @@ class XAIConnection(BaseConnection):
             logger.error(f"Configuration failed: {e}")
             return False
 
-    def is_configured(self, verbose = False) -> bool:
+    def is_configured(self, verbose: bool = False) -> bool:
         """Check if XAI API key is configured and valid"""
         try:
             load_dotenv()
@@ -135,7 +118,7 @@ class XAIConnection(BaseConnection):
                 logger.debug(f"Configuration check failed: {e}")
             return False
 
-    def generate_text(self, prompt: str, system_prompt: str = None, model: str = None, **kwargs) -> str:
+    def generate_text(self, prompt: str, system_prompt: Optional[str] = None, model: Optional[str] = None, **kwargs: Any) -> str:
         """Generate text using XAI models"""
         try:
             client = self._get_client()
@@ -162,7 +145,7 @@ class XAIConnection(BaseConnection):
         except Exception as e:
             raise XAIAPIError(f"Text generation failed: {e}")
 
-    def check_model(self, model: str, **kwargs) -> bool:
+    def check_model(self, model: str, **kwargs: Any) -> bool:
         """Check if a specific model is available"""
         try:
             client = self._get_client()
@@ -174,28 +157,27 @@ class XAIConnection(BaseConnection):
         except Exception as e:
             raise XAIAPIError(f"Model check failed: {e}")
 
-    def list_models(self, **kwargs) -> None:
+    def list_models(self, **kwargs: Any) -> List[str]:
         """List all available XAI models"""
         try:
             client = self._get_client()
             models = client.models.list().data
+            model_list: List[str] = []
             
             logger.info("\nGROK MODELS:")
             for i, model in enumerate(models):
+                model_list.append(model.id)
                 logger.info(f"{i+1}. {model.id}")
+            
+            return model_list
                 
         except Exception as e:
             raise XAIAPIError(f"Listing models failed: {e}")
 
-    def perform_action(self, action_name: str, kwargs) -> Any:
+    def perform_action(self, action_name: str, **kwargs: Any) -> Any:
         """Execute an action with validation"""
         if action_name not in self.actions:
             raise KeyError(f"Unknown action: {action_name}")
-
-        action = self.actions[action_name]
-        errors = action.validate_params(kwargs)
-        if errors:
-            raise ValueError(f"Invalid parameters: {', '.join(errors)}")
 
         # Call the appropriate method based on action name
         method_name = action_name.replace('-', '_')
