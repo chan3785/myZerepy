@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Dict, Any, Optional, cast
+from typing import Dict, Any, Optional, cast, List
 from dotenv import set_key, load_dotenv
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
 from src.helpers import print_h_bar
@@ -103,7 +103,7 @@ class DiscordConnection(BaseConnection):
             logger.error(f"Configuration failed: {e}")
             return False
 
-    def is_configured(self, verbose=False) -> bool:
+    def is_configured(self, verbose: bool = False) -> bool:
         """Check if Discord API key is configured and valid"""
         try:
             load_dotenv()
@@ -305,7 +305,8 @@ class DiscordConnection(BaseConnection):
             raise DiscordAPIError(
                 f"Failed to call POST to Discord: {response.status_code} - {response.text}"
             )
-        return json.loads(response.text)
+        response_data: Dict[str, Any] = json.loads(response.text)
+        return response_data
 
     def _get_request(self, url_path: str) -> Dict[str, Any]:
         """Helper method to make GET request"""
@@ -314,13 +315,13 @@ class DiscordConnection(BaseConnection):
             "Accept": "application/json",
             "Authorization": self._get_request_auth_token(),
         }
-        print(headers)
         response = requests.request("GET", url, headers=headers, data={})
         if response.status_code != 200:
             raise DiscordAPIError(
                 f"Failed to call GET to Discord: {response.status_code} - {response.text}"
             )
-        return json.loads(response.text)
+        response_data: Dict[str, Any] = json.loads(response.text)
+        return response_data
 
     def _get_request_auth_token(self) -> str:
         return f"Bot {os.getenv('DISCORD_TOKEN')}"
@@ -336,7 +337,8 @@ class DiscordConnection(BaseConnection):
                     f"Failed to call GET to Discord: {response.status_code} - {response.text}"
                 )
 
-            self.bot_username = json.loads(response.text)["username"]
+            response_data = json.loads(response.text)
+            self.bot_username = response_data["username"]
 
         except Exception as e:
             raise DiscordConnectionError(f"Connection test failed: {e}")
