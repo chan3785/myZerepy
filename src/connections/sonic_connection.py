@@ -169,7 +169,11 @@ class SonicConnection(BaseConnection):
                 logger.error("Web3 not initialized")
             return None
 
+        # Type assertion to help mypy understand web3 is a Web3 instance
+        assert isinstance(web3, Web3), "web3 must be a Web3 instance"
+
         try:
+            # After this point, we know web3 is a Web3 instance
             if not web3.is_connected():
                 if verbose:
                     logger.error("Not connected to Sonic network")
