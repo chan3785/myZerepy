@@ -97,6 +97,17 @@ class GoatConfig(BaseConnectionConfig):
     name: str = "goat"
     plugins: List[PluginConfig]
 
+class EchoChamberConfig(BaseConnectionConfig):
+    """Configuration for EchoChamber connection"""
+    name: str = "echochamber"
+    api_url: str
+    api_key: str
+    room: str
+    sender_username: str
+    sender_model: str
+    history_read_count: int = Field(default=100, gt=0)
+    post_history_track: int = Field(default=50, gt=0)
+
 class DiscordConfig(BaseConnectionConfig):
     """Configuration for Discord connection"""
     name: str = "discord"
