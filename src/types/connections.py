@@ -346,7 +346,32 @@ class GoatConfig(BaseConnectionConfig):
     plugins: List[PluginConfig]
 
 class EchoChamberConfig(BaseConnectionConfig):
-    """Configuration for EchoChamber connection"""
+    """Configuration for EchoChamber social network connection.
+    
+    Example:
+        {
+            "name": "echochamber",
+            "api_url": "https://api.echochamber.xyz",
+            "api_key": "your-api-key",
+            "room": "general",
+            "sender_username": "bot_user",
+            "sender_model": "gpt-4",
+            "history_read_count": 100,
+            "post_history_track": 50,
+            "enabled": true
+        }
+    
+    Fields:
+        name: Connection identifier, must be "echochamber"
+        api_url: EchoChamber API endpoint URL
+        api_key: API key for authentication
+        room: Chat room identifier
+        sender_username: Username to post messages as
+        sender_model: Model identifier for message generation
+        history_read_count: Number of messages to fetch (default: 100)
+        post_history_track: Number of messages to track (default: 50)
+        enabled: Whether the connection is enabled (default: true)
+    """
     name: str = "echochamber"
     api_url: str
     api_key: str
