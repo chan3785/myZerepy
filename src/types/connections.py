@@ -3,38 +3,140 @@ from typing import Optional, Dict, Any, List
 from .config import BaseConnectionConfig, LLMConnectionConfig, BlockchainConnectionConfig
 
 class OpenAIConfig(LLMConnectionConfig):
-    """Configuration for OpenAI connection"""
+    """Configuration for OpenAI API connection.
+    
+    Example:
+        {
+            "name": "openai",
+            "model": "gpt-3.5-turbo",
+            "temperature": 0.7,
+            "max_tokens": 1000,
+            "api_key": "your-api-key"  # Optional, can be set via environment variable
+        }
+    
+    Fields:
+        name: Connection identifier, must be "openai"
+        model: OpenAI model to use (e.g., "gpt-3.5-turbo", "gpt-4")
+        temperature: Controls randomness in responses (0.0 to 2.0)
+        max_tokens: Maximum tokens in response (optional)
+        api_key: OpenAI API key (optional if set in environment)
+    """
     name: str = "openai"
     model: str = "gpt-3.5-turbo"
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: Optional[int] = Field(default=None, gt=0)
 
 class AnthropicConfig(LLMConnectionConfig):
-    """Configuration for Anthropic connection"""
+    """Configuration for Anthropic API connection.
+    
+    Example:
+        {
+            "name": "anthropic",
+            "model": "claude-3-5-sonnet-20241022",
+            "max_tokens": 2000,
+            "api_key": "your-api-key"  # Optional, can be set via environment variable
+        }
+    
+    Fields:
+        name: Connection identifier, must be "anthropic"
+        model: Anthropic model to use (e.g., "claude-3-5-sonnet-20241022")
+        max_tokens: Maximum tokens in response (optional)
+        api_key: Anthropic API key (optional if set in environment)
+    """
     name: str = "anthropic"
     model: str = "claude-3-5-sonnet-20241022"
     max_tokens: Optional[int] = Field(default=None, gt=0)
 
 class SolanaConfig(BlockchainConnectionConfig):
-    """Configuration for Solana connection"""
+    """Configuration for Solana blockchain connection.
+    
+    Example:
+        {
+            "name": "solana",
+            "rpc": "https://api.mainnet-beta.solana.com",
+            "network": "mainnet",
+            "commitment": "confirmed",
+            "timeout": 30
+        }
+    
+    Fields:
+        name: Connection identifier, must be "solana"
+        rpc: Solana RPC endpoint URL
+        network: Network to connect to (e.g., "mainnet", "devnet")
+        commitment: Transaction commitment level ("processed", "confirmed", "finalized")
+        timeout: Request timeout in seconds (default: 30)
+    """
     name: str = "solana"
     commitment: str = "confirmed"
     timeout: int = Field(default=30, ge=1)
     
 class EthereumConfig(BlockchainConnectionConfig):
-    """Configuration for Ethereum connection"""
+    """Configuration for Ethereum blockchain connection.
+    
+    Example:
+        {
+            "name": "ethereum",
+            "rpc": "https://eth-mainnet.g.alchemy.com/v2/your-api-key",
+            "network": "mainnet",
+            "chain_id": 1,
+            "gas_limit": 500000
+        }
+    
+    Fields:
+        name: Connection identifier, must be "ethereum"
+        rpc: Ethereum RPC endpoint URL
+        network: Network to connect to (e.g., "mainnet", "goerli")
+        chain_id: Network chain ID (optional, derived from network if not provided)
+        gas_limit: Maximum gas limit for transactions (optional)
+    """
     name: str = "ethereum"
     chain_id: Optional[int] = None
     gas_limit: Optional[int] = Field(default=None, gt=0)
     
 class FarcasterConfig(BaseConnectionConfig):
-    """Configuration for Farcaster connection"""
+    """Configuration for Farcaster social network connection.
+    
+    Example:
+        {
+            "name": "farcaster",
+            "recovery_phrase": "your twelve word recovery phrase here",
+            "endpoint": "https://api.farcaster.xyz",
+            "enabled": true
+        }
+    
+    Fields:
+        name: Connection identifier, must be "farcaster"
+        recovery_phrase: Farcaster wallet recovery phrase (optional if set in environment)
+        endpoint: Custom API endpoint URL (optional)
+        enabled: Whether the connection is enabled (default: true)
+    """
     name: str = "farcaster"
     recovery_phrase: Optional[str] = None
     endpoint: Optional[str] = None
     
 class TwitterConfig(BaseConnectionConfig):
-    """Configuration for Twitter/X connection"""
+    """Configuration for Twitter/X social network connection.
+    
+    Example:
+        {
+            "name": "twitter",
+            "api_key": "your-api-key",
+            "api_secret": "your-api-secret",
+            "access_token": "your-access-token",
+            "access_token_secret": "your-access-token-secret",
+            "timeline_read_count": 20,
+            "enabled": true
+        }
+    
+    Fields:
+        name: Connection identifier, must be "twitter"
+        api_key: Twitter API key
+        api_secret: Twitter API secret
+        access_token: OAuth access token (optional)
+        access_token_secret: OAuth access token secret (optional)
+        timeline_read_count: Number of tweets to fetch (default: 10)
+        enabled: Whether the connection is enabled (default: true)
+    """
     name: str = "twitter"
     api_key: str
     api_secret: str
