@@ -90,36 +90,12 @@ class EchochambersConnection(BaseConnection):
 
     def register_actions(self) -> None:
         """Register available Echochambers actions"""
-        actions = [
-            Action(
-                name="get-room-info",
-                description="Get information about the current room including topic and tags",
-                parameters=[]
-            ),
-            Action(
-                name="get-room-history",
-                description="Get message history from the Echochambers room",
-                parameters=[]
-            ),
-            Action(
-                name="send-message",
-                description="Send a message to the Echochambers room",
-                parameters=[
-                    ActionParameter(
-                        name="content",
-                        description="The message content to send",
-                        required=True,
-                        type=str
-                    )
-                ]
-            ),
-            Action(
-                name="process-room-history",
-                description="Process and queue messages for replies",
-                parameters=[]
-            )
-        ]
-        self.actions = {action.name: action for action in actions}
+        self.actions = {
+            "get-room-info": self.get_room_info,
+            "get-room-history": self.get_room_history,
+            "send-message": self.send_message,
+            "process-room-history": self.process_room_history
+        }
 
     def get_room_info(self) -> Dict[str, Any]:
         """Get information about the current room by listing all rooms and finding ours"""
@@ -210,7 +186,7 @@ class EchochambersConnection(BaseConnection):
             self._handle_error("Failed to process room history", e)
             raise
 
-    def _make_request(self, method: str, url: str, **kwargs) -> Any:
+    def _make_request(self, method: str, url: str, **kwargs: Any) -> Dict[str, Any]:
         """Make HTTP request with retries and error handling"""
         headers = {
             "Content-Type": "application/json",
@@ -236,6 +212,7 @@ class EchochambersConnection(BaseConnection):
                     raise EchochambersAPIError(f"Failed after 3 attempts: {str(e)}")
                 logger.warning(f"Attempt {attempt + 1} failed: {str(e)}")
                 time.sleep(2 ** attempt)
+        raise EchochambersAPIError("Request failed after all retries")
 
     def _handle_error(self, message: str, error: Exception) -> None:
         """Handle and log errors"""
@@ -262,7 +239,7 @@ class EchochambersConnection(BaseConnection):
 
             self.metrics['last_metrics_log'] = current_time
 
-    def configure(self) -> bool:
+    def configure(self, **kwargs: Any) -> bool:
         """Configure the Echochambers connection"""
         logger.info("Configuring Echochambers connection")
         try:
@@ -293,19 +270,12 @@ class EchochambersConnection(BaseConnection):
                 logger.error(f"Echochambers connection test failed: {str(e)}")
             return False
 
-    def perform_action(self, action_name: str, kwargs) -> Any:
+    def perform_action(self, action_name: str, **kwargs: Any) -> Any:
         """Execute an Echochambers action with validation"""
-        action = self.actions.get(action_name)
-        if not action:
+        if action_name not in self.actions:
             raise KeyError(f"Unknown action: {action_name}")
 
-        errors = action.validate_params(kwargs)
-        if errors:
-            raise ValueError(f"Invalid parameters: {', '.join(errors)}")
-
+        # Call the appropriate method based on action name
         method_name = action_name.replace('-', '_')
-        method = getattr(self, method_name, None)
-        if method:
-            return method(**kwargs)
-        else:
-            raise NotImplementedError(f"The action '{action_name}' is not implemented.")
+        method = getattr(self, method_name)
+        return method(**kwargs)
