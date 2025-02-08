@@ -221,7 +221,34 @@ class GroqConfig(LLMConnectionConfig):
     top_p: float = Field(default=1.0, ge=0.0, le=1.0)
 
 class EternalAIConfig(LLMConnectionConfig):
-    """Configuration for EternalAI connection"""
+    """Configuration for EternalAI hybrid LLM/blockchain connection.
+    
+    Example:
+        {
+            "name": "eternalai",
+            "model": "eternal-v1",
+            "temperature": 0.7,
+            "max_tokens": 2000,
+            "top_p": 1.0,
+            "chain_id": "45762",
+            "agent_id": 123,
+            "contract_address": "0x1234...",
+            "rpc_url": "https://rpc.eternal.ai",
+            "api_key": "your-api-key"  # Optional, can be set via environment variable
+        }
+    
+    Fields:
+        name: Connection identifier, must be "eternalai"
+        model: EternalAI model to use (e.g., "eternal-v1")
+        temperature: Controls randomness in responses (0.0 to 2.0)
+        max_tokens: Maximum tokens in response (optional)
+        top_p: Top-p sampling parameter (0.0 to 1.0)
+        chain_id: Blockchain network chain ID (default: "45762")
+        agent_id: EternalAI agent ID (optional)
+        contract_address: Smart contract address (optional)
+        rpc_url: Custom RPC endpoint URL (optional)
+        api_key: EternalAI API key (optional if set in environment)
+    """
     name: str = "eternalai"
     model: str = "eternal-v1"
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
