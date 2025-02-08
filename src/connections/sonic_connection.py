@@ -7,7 +7,7 @@ from dotenv import load_dotenv, set_key
 from web3 import Web3
 from web3.middleware import geth_poa_middleware
 from src.constants.abi import ERC20_ABI
-from src.connections.base_connection import BaseConnection, Action, ActionParameter
+from src.connections.base_connection import BaseConnection
 from src.constants.networks import SONIC_NETWORKS
 from src.types.connections import SonicConfig
 from src.types.config import BaseConnectionConfig
@@ -120,48 +120,20 @@ class SonicConnection(BaseConnection):
             return None
 
     def register_actions(self) -> None:
+        """Register available Sonic actions"""
         self.actions = {
-            "get-token-by-ticker": Action(
-                name="get-token-by-ticker",
-                parameters=[
-                    ActionParameter("ticker", True, str, "Token ticker symbol to look up")
-                ],
-                description="Get token address by ticker symbol"
-            ),
-            "get-balance": Action(
-                name="get-balance",
-                parameters=[
-                    ActionParameter("address", False, str, "Address to check balance for"),
-                    ActionParameter("token_address", False, str, "Optional token address")
-                ],
-                description="Get $S or token balance"
-            ),
-            "transfer": Action(
-                name="transfer",
-                parameters=[
-                    ActionParameter("to_address", True, str, "Recipient address"),
-                    ActionParameter("amount", True, float, "Amount to transfer"),
-                    ActionParameter("token_address", False, str, "Optional token address")
-                ],
-                description="Send $S or tokens"
-            ),
-            "swap": Action(
-                name="swap",
-                parameters=[
-                    ActionParameter("token_in", True, str, "Input token address"),
-                    ActionParameter("token_out", True, str, "Output token address"),
-                    ActionParameter("amount", True, float, "Amount to swap"),
-                    ActionParameter("slippage", False, float, "Max slippage percentage")
-                ],
-                description="Swap tokens"
-            )
+            "get-token-by-ticker": self.get_token_by_ticker,
+            "get-balance": self.get_balance,
+            "transfer": self.transfer,
+            "swap": self.swap
         }
 
-    def configure(self) -> bool:
+    def configure(self, **kwargs: Any) -> bool:
+        """Configure Sonic connection with private key"""
         logger.info("\n🔷 SONIC CHAIN SETUP")
         if self.is_configured():
             logger.info("Sonic connection is already configured")
-            response = input("Do you want to reconfigure? (y/n): ")
+            response = kwargs.get("response") or input("Do you want to reconfigure? (y/n): ")
             if response.lower() != 'y':
                 return True
 
@@ -170,7 +142,7 @@ class SonicConnection(BaseConnection):
                 with open('.env', 'w') as f:
                     f.write('')
 
-            private_key = input("\nEnter your wallet private key: ")
+            private_key = kwargs.get("private_key") or input("\nEnter your wallet private key: ")
             if not private_key.startswith('0x'):
                 private_key = '0x' + private_key
             set_key('.env', 'SONIC_PRIVATE_KEY', private_key)
@@ -451,8 +423,8 @@ class SonicConnection(BaseConnection):
         except Exception as e:
             logger.error(f"Swap failed: {e}")
             raise
-    def perform_action(self, action_name: str, kwargs) -> Any:
-        """Execute a Sonic action with validation"""
+    def perform_action(self, action_name: str, **kwargs: Any) -> Any:
+        """Execute a Sonic action"""
         if action_name not in self.actions:
             raise KeyError(f"Unknown action: {action_name}")
 
@@ -461,11 +433,5 @@ class SonicConnection(BaseConnection):
         if not self.is_configured(verbose=True):
             raise SonicConnectionError("Sonic is not properly configured")
 
-        action = self.actions[action_name]
-        errors = action.validate_params(kwargs)
-        if errors:
-            raise ValueError(f"Invalid parameters: {', '.join(errors)}")
-
-        method_name = action_name.replace('-', '_')
-        method = getattr(self, method_name)
+        method = self.actions[action_name]
         return method(**kwargs)
