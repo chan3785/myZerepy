@@ -178,13 +178,14 @@ class SonicConnection(BaseConnection):
 
             try:
                 # Type-safe access to Web3 instance
-                if not web3.is_connected():
+                web3_instance = cast(Web3, web3)  # Explicitly cast to Web3 type
+                if not web3_instance.is_connected():
                     if verbose:
                         logger.error("Not connected to Sonic network")
                     return False
 
                 # Verify we can access eth property
-                _ = web3.eth
+                _ = web3_instance.eth
             except Exception as e:
                 if verbose:
                     logger.error(f"Failed to check connection: {e}")
@@ -222,11 +223,11 @@ class SonicConnection(BaseConnection):
                 )
                 balance = contract.functions.balanceOf(checksum_address).call()
                 decimals = contract.functions.decimals().call()
-                return float(balance) / (10 ** decimals)
+                return float(int(balance) / (10 ** decimals))
             else:
                 balance = self._web3.eth.get_balance(checksum_address)
-                wei_balance = float(balance)
-                return float(self._web3.from_wei(Wei(int(wei_balance)), 'ether'))
+                wei_balance = Wei(balance)
+                return float(self._web3.from_wei(wei_balance, 'ether'))
 
         except Exception as e:
             logger.error(f"Failed to get balance: {e}")
@@ -459,14 +460,15 @@ class SonicConnection(BaseConnection):
             # Handle token approval if not using native token
             if token_in.lower() != self.NATIVE_TOKEN.lower():
                 if token_in.lower() == "0x039e2fb66102314ce7b64ce5ce3e5183bc94ad38".lower():  # $S token
-                    amount_raw = self._web3.to_wei(amount, 'ether')
+                    amount_raw = Wei(self._web3.to_wei(amount, 'ether'))
                 else:
                     token_contract = self._web3.eth.contract(
                         address=Web3.to_checksum_address(token_in),
                         abi=self.ERC20_ABI
                     )
                     decimals = token_contract.functions.decimals().call()
-                    amount_raw = int(amount * (10 ** decimals))
+                    raw_amount = int(amount * (10 ** decimals))
+                    amount_raw = Wei(raw_amount)
                 self._handle_token_approval(token_in, router_address, amount_raw)
             
             # Prepare transaction
