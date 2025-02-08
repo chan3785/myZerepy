@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Dict, Any, Optional, cast
+from typing import Dict, Any, Optional, cast, List
 from openai import OpenAI
 from dotenv import set_key, load_dotenv
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
@@ -131,7 +131,7 @@ class XAIConnection(BaseConnection):
             response = client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "system", "content": system_prompt} if system_prompt else {"role": "system", "content": ""},
+                    {"role": "system", "content": system_prompt or ""},
                     {"role": "user", "content": prompt},
                 ],
                 temperature=config.temperature,
@@ -140,7 +140,10 @@ class XAIConnection(BaseConnection):
                 presence_penalty=config.presence_penalty,
                 frequency_penalty=config.frequency_penalty
             )
-            return response.choices[0].message.content
+            content = response.choices[0].message.content
+            if content is None:
+                raise XAIAPIError("No content returned from API")
+            return content
             
         except Exception as e:
             raise XAIAPIError(f"Text generation failed: {e}")
