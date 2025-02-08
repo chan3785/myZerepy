@@ -174,10 +174,16 @@ class SonicConnection(BaseConnection):
                     logger.error("Web3 not initialized")
                 return False
 
-            if not self._web3.is_connected():
+            try:
+                if not self._web3.is_connected():
+                    if verbose:
+                        logger.error("Not connected to Sonic network")
+                    return False
+            except Exception as e:
                 if verbose:
-                    logger.error("Not connected to Sonic network")
+                    logger.error(f"Failed to check connection: {e}")
                 return False
+
             return True
 
         except Exception as e:
@@ -198,16 +204,18 @@ class SonicConnection(BaseConnection):
                 account = self._web3.eth.account.from_key(private_key)
                 address = account.address
 
+            checksum_address = Web3.to_checksum_address(address)
+
             if token_address:
                 contract = self._web3.eth.contract(
                     address=Web3.to_checksum_address(token_address),
                     abi=self.ERC20_ABI
                 )
-                balance = contract.functions.balanceOf(address).call()
+                balance = contract.functions.balanceOf(checksum_address).call()
                 decimals = contract.functions.decimals().call()
                 return float(balance) / (10 ** decimals)
             else:
-                balance = self._web3.eth.get_balance(address)
+                balance = self._web3.eth.get_balance(checksum_address)
                 return float(self._web3.from_wei(balance, 'ether'))
 
         except Exception as e:
@@ -242,12 +250,13 @@ class SonicConnection(BaseConnection):
                     'chainId': chain_id
                 }
                 
-                tx = contract.functions.transfer(
+                token_tx = contract.functions.transfer(
                     Web3.to_checksum_address(to_address),
                     Wei(amount_raw)
                 ).build_transaction(base_tx)
+                tx_to_sign = token_tx
             else:
-                tx: TxParams = {
+                native_tx: TxParams = {
                     'nonce': self._web3.eth.get_transaction_count(account.address),
                     'to': Web3.to_checksum_address(to_address),
                     'value': Wei(self._web3.to_wei(amount, 'ether')),
@@ -255,13 +264,14 @@ class SonicConnection(BaseConnection):
                     'gasPrice': self._web3.eth.gas_price,
                     'chainId': chain_id
                 }
+                tx_to_sign = native_tx
 
-            signed = account.sign_transaction(tx)
+            signed = account.sign_transaction(tx_to_sign)
             tx_hash = self._web3.eth.send_raw_transaction(signed.rawTransaction)
 
             # Wait for transaction receipt and check status
-            receipt: TxReceipt = self._web3.eth.wait_for_transaction_receipt(tx_hash)
-            if receipt['status'] != 1:
+            receipt = self._web3.eth.wait_for_transaction_receipt(tx_hash)
+            if not receipt or receipt.get('status') != 1:
                 raise SonicConnectionError("Transfer transaction failed")
 
             # Return explorer link
@@ -450,10 +460,10 @@ class SonicConnection(BaseConnection):
                 self._handle_token_approval(token_in, router_address, amount_raw)
             
             # Prepare transaction
-            tx: TxParams = {
+            base_tx: TxParams = {
                 'from': account.address,
                 'to': Web3.to_checksum_address(router_address),
-                'data': encoded_data,
+                'data': Web3.to_hex(encoded_data) if isinstance(encoded_data, bytes) else encoded_data,
                 'nonce': self._web3.eth.get_transaction_count(account.address),
                 'gasPrice': self._web3.eth.gas_price,
                 'chainId': self._web3.eth.chain_id,
@@ -462,18 +472,18 @@ class SonicConnection(BaseConnection):
             
             # Estimate gas
             try:
-                tx['gas'] = self._web3.eth.estimate_gas(tx)
+                base_tx['gas'] = self._web3.eth.estimate_gas(base_tx)
             except Exception as e:
                 logger.warning(f"Gas estimation failed: {e}, using default gas limit")
-                tx['gas'] = 500000  # Default gas limit
+                base_tx['gas'] = 500000  # Default gas limit
             
             # Sign and send transaction
-            signed_tx = account.sign_transaction(tx)
+            signed_tx = account.sign_transaction(base_tx)
             tx_hash = self._web3.eth.send_raw_transaction(signed_tx.rawTransaction)
             
             # Wait for transaction receipt and check status
             receipt = self._web3.eth.wait_for_transaction_receipt(tx_hash)
-            if receipt.status != 1:
+            if not receipt or receipt.get('status') != 1:
                 raise SonicConnectionError("Swap transaction failed")
             
             # Return explorer link
