@@ -2,10 +2,11 @@ import logging
 import os
 import requests
 import time
-from typing import Dict, Any, Optional, cast
+from typing import Dict, Any, Optional, cast, Union
 from dotenv import load_dotenv, set_key
 from web3 import Web3
 from web3.middleware import geth_poa_middleware
+from web3.types import Wei, TxParams, TxReceipt
 from src.constants.abi import ERC20_ABI
 from src.connections.base_connection import BaseConnection
 from src.constants.networks import SONIC_NETWORKS
@@ -168,6 +169,11 @@ class SonicConnection(BaseConnection):
                     logger.error("Missing SONIC_PRIVATE_KEY in .env")
                 return False
 
+            if not self._web3:
+                if verbose:
+                    logger.error("Web3 not initialized")
+                return False
+
             if not self._web3.is_connected():
                 if verbose:
                     logger.error("Not connected to Sonic network")
@@ -178,6 +184,35 @@ class SonicConnection(BaseConnection):
             if verbose:
                 logger.error(f"Configuration check failed: {e}")
             return False
+
+    def get_balance(self, address: Optional[str] = None, token_address: Optional[str] = None) -> float:
+        """Get balance for an address or the configured wallet"""
+        try:
+            if not self._web3:
+                raise SonicConnectionError("Web3 not initialized")
+
+            if not address:
+                private_key = os.getenv('SONIC_PRIVATE_KEY')
+                if not private_key:
+                    raise SonicConnectionError("No wallet configured")
+                account = self._web3.eth.account.from_key(private_key)
+                address = account.address
+
+            if token_address:
+                contract = self._web3.eth.contract(
+                    address=Web3.to_checksum_address(token_address),
+                    abi=self.ERC20_ABI
+                )
+                balance = contract.functions.balanceOf(address).call()
+                decimals = contract.functions.decimals().call()
+                return float(balance) / (10 ** decimals)
+            else:
+                balance = self._web3.eth.get_balance(address)
+                return float(self._web3.from_wei(balance, 'ether'))
+
+        except Exception as e:
+            logger.error(f"Failed to get balance: {e}")
+            raise
 
     def transfer(self, to_address: str, amount: float, token_address: Optional[str] = None) -> str:
         """Transfer $S or tokens to an address"""
@@ -200,20 +235,22 @@ class SonicConnection(BaseConnection):
                 decimals = contract.functions.decimals().call()
                 amount_raw = int(amount * (10 ** decimals))
                 
-                tx = contract.functions.transfer(
-                    Web3.to_checksum_address(to_address),
-                    amount_raw
-                ).build_transaction({
+                base_tx: TxParams = {
                     'from': account.address,
                     'nonce': self._web3.eth.get_transaction_count(account.address),
                     'gasPrice': self._web3.eth.gas_price,
                     'chainId': chain_id
-                })
+                }
+                
+                tx = contract.functions.transfer(
+                    Web3.to_checksum_address(to_address),
+                    Wei(amount_raw)
+                ).build_transaction(base_tx)
             else:
-                tx = {
+                tx: TxParams = {
                     'nonce': self._web3.eth.get_transaction_count(account.address),
                     'to': Web3.to_checksum_address(to_address),
-                    'value': self._web3.to_wei(amount, 'ether'),
+                    'value': Wei(self._web3.to_wei(amount, 'ether')),
                     'gas': 21000,
                     'gasPrice': self._web3.eth.gas_price,
                     'chainId': chain_id
@@ -222,7 +259,12 @@ class SonicConnection(BaseConnection):
             signed = account.sign_transaction(tx)
             tx_hash = self._web3.eth.send_raw_transaction(signed.rawTransaction)
 
-            # Log and return explorer link immediately
+            # Wait for transaction receipt and check status
+            receipt: TxReceipt = self._web3.eth.wait_for_transaction_receipt(tx_hash)
+            if receipt['status'] != 1:
+                raise SonicConnectionError("Transfer transaction failed")
+
+            # Return explorer link
             tx_link = self._get_explorer_link(tx_hash.hex())
             return f"⛓️ Transfer transaction sent: {tx_link}"
 
@@ -238,14 +280,14 @@ class SonicConnection(BaseConnection):
 
             # Convert amount to raw value
             if token_in.lower() == self.NATIVE_TOKEN.lower():
-                amount_raw = self._web3.to_wei(amount_in, 'ether')
+                amount_raw = Wei(self._web3.to_wei(amount_in, 'ether'))
             else:
                 token_contract = self._web3.eth.contract(
                     address=Web3.to_checksum_address(token_in),
                     abi=self.ERC20_ABI
                 )
                 decimals = token_contract.functions.decimals().call()
-                amount_raw = int(amount_in * (10 ** decimals))
+                amount_raw = Wei(int(amount_in * (10 ** decimals)))
             
             # Set up API request
             url = f"{self.aggregator_api}/routes"
@@ -265,8 +307,8 @@ class SonicConnection(BaseConnection):
                 raise SonicConnectionError(f"API error: {data.get('message')}")
                 
             result = data.get("data")
-            if not result:
-                raise SonicConnectionError("No route data returned from API")
+            if not isinstance(result, dict):
+                raise SonicConnectionError("Invalid route data returned from API")
             return result
                 
         except Exception as e:
@@ -313,7 +355,7 @@ class SonicConnection(BaseConnection):
             logger.error(f"Failed to encode swap data: {e}")
             raise
     
-    def _handle_token_approval(self, token_address: str, spender_address: str, amount: int) -> None:
+    def _handle_token_approval(self, token_address: str, spender_address: str, amount: Wei) -> None:
         """Handle token approval for spender"""
         try:
             if not self._web3:
@@ -337,23 +379,25 @@ class SonicConnection(BaseConnection):
             ).call()
             
             if current_allowance < amount:
-                approve_tx = token_contract.functions.approve(
-                    spender_address,
-                    amount
-                ).build_transaction({
+                approve_tx: TxParams = {
                     'from': account.address,
                     'nonce': self._web3.eth.get_transaction_count(account.address),
                     'gasPrice': self._web3.eth.gas_price,
                     'chainId': self._web3.eth.chain_id
-                })
+                }
+                
+                approve_tx = token_contract.functions.approve(
+                    spender_address,
+                    amount
+                ).build_transaction(approve_tx)
                 
                 signed_approve = account.sign_transaction(approve_tx)
                 tx_hash = self._web3.eth.send_raw_transaction(signed_approve.rawTransaction)
                 logger.info(f"Approval transaction sent: {self._get_explorer_link(tx_hash.hex())}")
                 
                 # Wait for approval to be mined
-                receipt = self._web3.eth.wait_for_transaction_receipt(tx_hash)
-                if receipt.status != 1:
+                receipt: TxReceipt = self._web3.eth.wait_for_transaction_receipt(tx_hash)
+                if receipt['status'] != 1:
                     raise SonicConnectionError("Approval transaction failed")
                 
         except Exception as e:
@@ -406,14 +450,14 @@ class SonicConnection(BaseConnection):
                 self._handle_token_approval(token_in, router_address, amount_raw)
             
             # Prepare transaction
-            tx = {
+            tx: TxParams = {
                 'from': account.address,
                 'to': Web3.to_checksum_address(router_address),
                 'data': encoded_data,
                 'nonce': self._web3.eth.get_transaction_count(account.address),
                 'gasPrice': self._web3.eth.gas_price,
                 'chainId': self._web3.eth.chain_id,
-                'value': self._web3.to_wei(amount, 'ether') if token_in.lower() == self.NATIVE_TOKEN.lower() else 0
+                'value': Wei(self._web3.to_wei(amount, 'ether')) if token_in.lower() == self.NATIVE_TOKEN.lower() else Wei(0)
             }
             
             # Estimate gas
