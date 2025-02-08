@@ -415,7 +415,28 @@ class SonicConfig(BlockchainConnectionConfig):
     gas_limit: Optional[int] = Field(default=None, gt=0)
 
 class AlloraConfig(BlockchainConnectionConfig):
-    """Configuration for Allora Network connection"""
+    """Configuration for Allora Network blockchain connection.
+    
+    Example:
+        {
+            "name": "allora",
+            "rpc": "https://rpc.allora.network",
+            "network": "mainnet",
+            "chain_slug": "testnet",
+            "api_url": "https://api.allora.network",
+            "inference_timeout": 30,
+            "enabled": true
+        }
+    
+    Fields:
+        name: Connection identifier, must be "allora"
+        rpc: Allora RPC endpoint URL
+        network: Network to connect to (e.g., "mainnet", "testnet")
+        chain_slug: Chain identifier (default: "testnet")
+        api_url: Custom API endpoint URL (optional)
+        inference_timeout: Timeout for inference requests in seconds (default: 30)
+        enabled: Whether the connection is enabled (default: true)
+    """
     name: str = "allora"
     chain_slug: str = "testnet"  # Default to testnet as per connection class
     api_url: Optional[str] = None
