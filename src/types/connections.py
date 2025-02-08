@@ -194,7 +194,26 @@ class OllamaConfig(LLMConnectionConfig):
     host: str = "http://localhost:11434"
 
 class GroqConfig(LLMConnectionConfig):
-    """Configuration for Groq connection"""
+    """Configuration for Groq LLM connection.
+    
+    Example:
+        {
+            "name": "groq",
+            "model": "mixtral-8x7b-32768",
+            "temperature": 0.7,
+            "max_tokens": 2000,
+            "top_p": 1.0,
+            "api_key": "your-api-key"  # Optional, can be set via environment variable
+        }
+    
+    Fields:
+        name: Connection identifier, must be "groq"
+        model: Groq model to use (e.g., "mixtral-8x7b-32768")
+        temperature: Controls randomness in responses (0.0 to 2.0)
+        max_tokens: Maximum tokens in response (optional)
+        top_p: Top-p sampling parameter (0.0 to 1.0)
+        api_key: Groq API key (optional if set in environment)
+    """
     name: str = "groq"
     model: str = "mixtral-8x7b-32768"
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
