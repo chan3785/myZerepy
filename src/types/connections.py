@@ -49,6 +49,14 @@ class TogetherConfig(LLMConnectionConfig):
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: Optional[int] = Field(default=None, gt=0)
 
+class OllamaConfig(LLMConnectionConfig):
+    """Configuration for Ollama connection"""
+    name: str = "ollama"
+    model: str = "mistral"
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    max_tokens: Optional[int] = Field(default=None, gt=0)
+    host: str = "http://localhost:11434"
+
 class DiscordConfig(BaseConnectionConfig):
     """Configuration for Discord connection"""
     name: str = "discord"

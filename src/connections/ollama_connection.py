@@ -1,8 +1,10 @@
 import logging
 import requests
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Optional, cast
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
+from src.types.connections import OllamaConfig
+from src.types.config import BaseConnectionConfig
 
 logger = logging.getLogger("connections.ollama_connection")
 
@@ -18,28 +20,27 @@ class OllamaAPIError(OllamaConnectionError):
 
 
 class OllamaConnection(BaseConnection):
+    base_url: str
+    
     def __init__(self, config: Dict[str, Any]):
-        super().__init__(config)
-        self.base_url = config.get("base_url", "http://localhost:11434")  # Default to local Ollama setup
+        logger.info("Initializing Ollama connection...")
+        # Validate config before passing to super
+        validated_config = OllamaConfig(**config)
+        super().__init__(validated_config)
+        self.base_url = validated_config.host  # Use host from config
 
     @property
     def is_llm_provider(self) -> bool:
         return True
 
-    def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate Ollama configuration from JSON"""
-        required_fields = ["base_url", "model"]
-        missing_fields = [field for field in required_fields if field not in config]
-
-        if missing_fields:
-            raise ValueError(f"Missing required configuration fields: {', '.join(missing_fields)}")
-
-        if not isinstance(config["base_url"], str):
-            raise ValueError("base_url must be a string")
-        if not isinstance(config["model"], str):
-            raise ValueError("model must be a string")
-
-        return config
+    def validate_config(self, config: Dict[str, Any]) -> BaseConnectionConfig:
+        """Validate Ollama configuration from JSON and convert to Pydantic model"""
+        try:
+            # Convert dict config to Pydantic model
+            validated_config = OllamaConfig(**config)
+            return validated_config
+        except Exception as e:
+            raise ValueError(f"Invalid Ollama configuration: {str(e)}")
 
     def register_actions(self) -> None:
         """Register available Ollama actions"""
@@ -99,10 +100,13 @@ class OllamaConnection(BaseConnection):
         """Generate text using Ollama API with streaming support"""
         try:
             url = f"{self.base_url}/api/generate"
+            config = cast(OllamaConfig, self.config)
             payload = {
-                "model": model or self.config["model"],
+                "model": model or config.model,
                 "prompt": prompt,
                 "system": system_prompt,
+                "temperature": config.temperature,
+                "max_tokens": config.max_tokens if config.max_tokens else None,
             }
             response = requests.post(url, json=payload, stream=True)
 
