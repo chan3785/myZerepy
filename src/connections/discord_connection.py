@@ -1,9 +1,11 @@
 import os
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional, cast
 from dotenv import set_key, load_dotenv
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
 from src.helpers import print_h_bar
+from src.types.connections import DiscordConfig
+from src.types.config import BaseConnectionConfig
 import requests
 import json
 
@@ -29,8 +31,14 @@ class DiscordAPIError(DiscordConnectionError):
 
 
 class DiscordConnection(BaseConnection):
+    base_url: str = "https://discord.com/api/v10"
+    bot_username: Optional[str] = None
+    
     def __init__(self, config: Dict[str, Any]):
-        super().__init__(config)
+        logger.info("Initializing Discord connection...")
+        # Validate config before passing to super
+        validated_config = DiscordConfig(**config)
+        super().__init__(validated_config)
         self.base_url = "https://discord.com/api/v10"
         self.bot_username = None
 
@@ -38,30 +46,14 @@ class DiscordConnection(BaseConnection):
     def is_llm_provider(self) -> bool:
         return False
 
-    def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate Discord configuration from JSON"""
-        required_fields = ["server_id", "message_read_count", "message_emoji_name"]
-        missing_fields = [field for field in required_fields if field not in config]
-
-        if missing_fields:
-            raise ValueError(
-                f"Missing required configuration fields: {', '.join(missing_fields)}"
-            )
-
-        if (
-            not isinstance(config["message_read_count"], int)
-            or config["message_read_count"] <= 0
-        ):
-            raise ValueError("message_read_count must be a positive integer")
-        if (
-            not isinstance(config["message_emoji_name"], str)
-            or len(config["message_emoji_name"]) <= 0
-        ):
-            raise ValueError("message_emoji_name must be a valid string")
-        if not isinstance(config["server_id"], str) or len(config["server_id"]) <= 0:
-            raise ValueError("server_id must be a valid string")
-
-        return config
+    def validate_config(self, config: Dict[str, Any]) -> BaseConnectionConfig:
+        """Validate Discord configuration from JSON and convert to Pydantic model"""
+        try:
+            # Convert dict config to Pydantic model
+            validated_config = DiscordConfig(**config)
+            return validated_config
+        except Exception as e:
+            raise ValueError(f"Invalid Discord configuration: {str(e)}")
 
     def register_actions(self) -> None:
         """Register available Discord actions"""
@@ -230,18 +222,19 @@ class DiscordConnection(BaseConnection):
             raise ValueError(f"Invalid parameters: {', '.join(errors)}")
 
         # Add config parameters if not provided
+        config = cast(DiscordConfig, self.config)
         if action_name == "read-messages":
             if "count" not in kwargs:
-                kwargs["count"] = self.config["message_read_count"]
+                kwargs["count"] = config.message_limit
         elif action_name == "read-mentioned-messages":
             if "count" not in kwargs:
-                kwargs["count"] = self.config["message_read_count"]
+                kwargs["count"] = config.message_limit
         elif action_name == "react-to-message":
             if "emoji_name" not in kwargs:
-                kwargs["emoji_name"] = self.config["message_emoji_name"]
+                kwargs["emoji_name"] = "👍"  # Default emoji if not specified
         elif action_name == "list-channels":
             if "server_id" not in kwargs:
-                kwargs["server_id"] = self.config["server_id"]
+                kwargs["server_id"] = config.guild_id
 
         # Call the appropriate method based on action name
         method_name = action_name.replace("-", "_")

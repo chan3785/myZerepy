@@ -48,3 +48,12 @@ class TogetherConfig(LLMConnectionConfig):
     model: str = "mistralai/Mixtral-8x7B-Instruct-v0.1"
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: Optional[int] = Field(default=None, gt=0)
+
+class DiscordConfig(BaseConnectionConfig):
+    """Configuration for Discord connection"""
+    name: str = "discord"
+    bot_token: str
+    guild_id: Optional[str] = None
+    channel_id: Optional[str] = None
+    message_limit: int = Field(default=100, gt=0)
+    message_interval: int = Field(default=60, gt=0)
