@@ -1,7 +1,8 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Callable
+from typing import Any, Dict, List, Callable, Union, TypeVar
 from dataclasses import dataclass
+from src.types.config import BaseConnectionConfig
 
 @dataclass
 class ActionParameter:
@@ -28,13 +29,26 @@ class Action:
                     errors.append(f"Invalid type for {param.name}. Expected {param.type.__name__}")
         return errors
 
+T = TypeVar('T', bound=BaseConnectionConfig)
+
 class BaseConnection(ABC):
-    def __init__(self, config):
+    config: BaseConnectionConfig
+    actions: Dict[str, Callable]
+
+    def __init__(self, config: Union[Dict[str, Any], BaseConnectionConfig]):
         try:
             # Dictionary to store action name -> handler method mapping
-            self.actions: Dict[str, Callable] = {}
-            # Dictionary to store some essential configuration
-            self.config = self.validate_config(config) 
+            self.actions = {}
+            
+            # Handle both dict and BaseConnectionConfig inputs for backward compatibility
+            if isinstance(config, dict):
+                config = self.validate_config(config)
+            elif not isinstance(config, BaseConnectionConfig):
+                raise ValueError("Config must be either a dict or BaseConnectionConfig instance")
+                
+            # Store validated configuration
+            self.config = config
+            
             # Register actions during initialization
             self.register_actions()
         except Exception as e:
@@ -47,15 +61,15 @@ class BaseConnection(ABC):
         pass
 
     @abstractmethod
-    def validate_config(self, config) -> Dict[str, Any]:
+    def validate_config(self, config: Dict[str, Any]) -> BaseConnectionConfig:
         """
-        Validate config from JSON
+        Validate config from JSON and convert to appropriate ConnectionConfig type
 
         Args:
             config: dictionary containing all the config values for that connection
         
         Returns:
-            Dict[str, Any]: Returns the config if valid
+            BaseConnectionConfig: Returns the validated config as a Pydantic model
         
         Raises:
             Error if the configuration is not valid
@@ -105,8 +119,11 @@ class BaseConnection(ABC):
             
         Raises:
             KeyError: If the action is not registered
-            ValueError: If the action parameters are invalid
+            ValueError: If the action parameters are invalid or config is not properly set
         """
+        if not isinstance(self.config, BaseConnectionConfig):
+            raise ValueError("Connection not properly configured with Pydantic model")
+            
         if action_name not in self.actions:
             raise KeyError(f"Unknown action: {action_name}")
             

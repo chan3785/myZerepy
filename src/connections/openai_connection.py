@@ -1,9 +1,11 @@
 import logging
 import os
-from typing import Dict, Any
+from typing import Dict, Any, cast, Optional
 from dotenv import load_dotenv, set_key
 from openai import OpenAI
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
+from src.types.connections import OpenAIConfig
+from src.types.config import BaseConnectionConfig
 
 logger = logging.getLogger("connections.openai_connection")
 
@@ -20,27 +22,26 @@ class OpenAIAPIError(OpenAIConnectionError):
     pass
 
 class OpenAIConnection(BaseConnection):
+    _client: Optional[OpenAI]
+    
     def __init__(self, config: Dict[str, Any]):
-        super().__init__(config)
+        # Validate config before passing to super
+        validated_config = OpenAIConfig(**config)
+        super().__init__(validated_config)
         self._client = None
 
     @property
     def is_llm_provider(self) -> bool:
         return True
 
-    def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate OpenAI configuration from JSON"""
-        required_fields = ["model"]
-        missing_fields = [field for field in required_fields if field not in config]
-        
-        if missing_fields:
-            raise ValueError(f"Missing required configuration fields: {', '.join(missing_fields)}")
-            
-        # Validate model exists (will be checked in detail during configure)
-        if not isinstance(config["model"], str):
-            raise ValueError("model must be a string")
-            
-        return config
+    def validate_config(self, config: Dict[str, Any]) -> BaseConnectionConfig:
+        """Validate OpenAI configuration from JSON and convert to Pydantic model"""
+        try:
+            # Convert dict config to Pydantic model
+            validated_config = OpenAIConfig(**config)
+            return validated_config
+        except Exception as e:
+            raise ValueError(f"Invalid OpenAI configuration: {str(e)}")
 
     def register_actions(self) -> None:
         """Register available OpenAI actions"""
@@ -137,7 +138,7 @@ class OpenAIConnection(BaseConnection):
             
             # Use configured model if none provided
             if not model:
-                model = self.config["model"]
+                model = cast(OpenAIConfig, self.config).model
 
             completion = client.chat.completions.create(
                 model=model,
