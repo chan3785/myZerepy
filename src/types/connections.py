@@ -1,5 +1,5 @@
-from pydantic import Field
-from typing import Optional, Dict, Any
+from pydantic import Field, BaseModel
+from typing import Optional, Dict, Any, List
 from .config import BaseConnectionConfig, LLMConnectionConfig, BlockchainConnectionConfig
 
 class OpenAIConfig(LLMConnectionConfig):
@@ -86,6 +86,16 @@ class HyperbolicConfig(LLMConnectionConfig):
     top_p: float = Field(default=1.0, ge=0.0, le=1.0)
     presence_penalty: float = Field(default=0.0, ge=-2.0, le=2.0)
     frequency_penalty: float = Field(default=0.0, ge=-2.0, le=2.0)
+
+class PluginConfig(BaseModel):
+    """Configuration for a Goat plugin"""
+    name: str
+    args: Dict[str, Any]
+
+class GoatConfig(BaseConnectionConfig):
+    """Configuration for Goat connection"""
+    name: str = "goat"
+    plugins: List[PluginConfig]
 
 class DiscordConfig(BaseConnectionConfig):
     """Configuration for Discord connection"""
