@@ -57,7 +57,8 @@ class BaseConnection(ABC):
 
     @property
     @abstractmethod
-    def is_llm_provider(self):
+    def is_llm_provider(self) -> bool:
+        """Return whether this connection is an LLM provider"""
         pass
 
     @abstractmethod
@@ -109,7 +110,7 @@ class BaseConnection(ABC):
         """
         pass
 
-    def perform_action(self, action_name: str, **kwargs) -> Any:
+    def perform_action(self, action_name: str, **kwargs: Any) -> Any:
         """
         Perform a registered action with the given parameters.
         
