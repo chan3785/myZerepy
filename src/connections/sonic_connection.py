@@ -121,31 +121,6 @@ class SonicConnection(BaseConnection):
             logger.error(f"Error fetching token address: {str(error)}")
             return None
 
-    def get_balance(self, address: Optional[str] = None, token_address: Optional[str] = None) -> float:
-        """Get balance for an address or the configured wallet"""
-        try:
-            if not self._web3:
-                raise SonicConnectionError("Web3 not initialized")
-
-            if not address:
-                private_key = os.getenv('SONIC_PRIVATE_KEY')
-                if not private_key:
-                    raise SonicConnectionError("No wallet configured")
-                account = self._web3.eth.account.from_key(private_key)
-                address = account.address
-
-            if token_address:
-                contract = self._web3.eth.contract(
-                    address=Web3.to_checksum_address(token_address),
-                    abi=self.ERC20_ABI
-                )
-                balance = contract.functions.balanceOf(address).call()
-                decimals = contract.functions.decimals().call()
-                return float(balance) / (10 ** decimals)
-            else:
-                balance = self._web3.eth.get_balance(address)
-                return float(self._web3.from_wei(balance, 'ether'))
-
     def register_actions(self) -> None:
         """Register available Sonic actions"""
         self.actions = {
@@ -203,32 +178,6 @@ class SonicConnection(BaseConnection):
             if verbose:
                 logger.error(f"Configuration check failed: {e}")
             return False
-
-    def get_balance(self, address: Optional[str] = None, token_address: Optional[str] = None) -> float:
-        """Get balance for an address or the configured wallet"""
-        try:
-            if not address:
-                private_key = os.getenv('SONIC_PRIVATE_KEY')
-                if not private_key:
-                    raise SonicConnectionError("No wallet configured")
-                account = self._web3.eth.account.from_key(private_key)
-                address = account.address
-
-            if token_address:
-                contract = self._web3.eth.contract(
-                    address=Web3.to_checksum_address(token_address),
-                    abi=self.ERC20_ABI
-                )
-                balance = contract.functions.balanceOf(address).call()
-                decimals = contract.functions.decimals().call()
-                return balance / (10 ** decimals)
-            else:
-                balance = self._web3.eth.get_balance(address)
-                return self._web3.from_wei(balance, 'ether')
-
-        except Exception as e:
-            logger.error(f"Failed to get balance: {e}")
-            raise
 
     def transfer(self, to_address: str, amount: float, token_address: Optional[str] = None) -> str:
         """Transfer $S or tokens to an address"""
