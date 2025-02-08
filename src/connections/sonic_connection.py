@@ -161,6 +161,28 @@ class SonicConnection(BaseConnection):
             logger.error(f"Configuration failed: {e}")
             return False
 
+    def _get_web3(self, verbose: bool = False) -> Optional[Web3]:
+        """Get a validated Web3 instance if available"""
+        web3 = self._web3
+        if not web3:
+            if verbose:
+                logger.error("Web3 not initialized")
+            return None
+
+        try:
+            if not web3.is_connected():
+                if verbose:
+                    logger.error("Not connected to Sonic network")
+                return None
+
+            # Verify we can access eth property
+            _ = web3.eth
+            return web3
+        except Exception as e:
+            if verbose:
+                logger.error(f"Failed to check connection: {e}")
+            return None
+
     def is_configured(self, verbose: bool = False) -> bool:
         """Check if the connection is properly configured"""
         try:
@@ -170,26 +192,7 @@ class SonicConnection(BaseConnection):
                     logger.error("Missing SONIC_PRIVATE_KEY in .env")
                 return False
 
-            web3 = self._web3
-            if not web3:
-                if verbose:
-                    logger.error("Web3 not initialized")
-                return False
-
-            try:
-                # Type-safe access to Web3 instance
-                web3_instance = cast(Web3, web3)  # Explicitly cast to Web3 type
-                if not web3_instance.is_connected():
-                    if verbose:
-                        logger.error("Not connected to Sonic network")
-                    return False
-
-                # Verify we can access eth property
-                _ = web3_instance.eth
-            except Exception as e:
-                if verbose:
-                    logger.error(f"Failed to check connection: {e}")
-                return False
+            return self._get_web3(verbose) is not None
 
             return True
 
