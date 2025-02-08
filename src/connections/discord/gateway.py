@@ -3,6 +3,7 @@ from typing import Dict, Any, Optional, Callable, List
 import asyncio
 import json
 import logging
+import random
 import websockets
 from dataclasses import dataclass
 from enum import IntEnum
@@ -142,7 +143,7 @@ class DiscordGateway:
                 elif op == OpCode.RECONNECT:
                     await self._handle_reconnect()
                 elif op == OpCode.INVALID_SESSION:
-                    await self._handle_invalid_session()
+                    await self._handle_invalid_session(payload.get('d', False))
                 elif op == OpCode.HELLO:
                     # Already handled in connect()
                     pass
@@ -156,4 +157,101 @@ class DiscordGateway:
             await self._handle_reconnect()
         except Exception as e:
             logger.error(f"Error processing messages: {e}")
+            raise
+            
+    async def _heartbeat_loop(self):
+        """Send heartbeats at the specified interval."""
+        try:
+            while True:
+                await asyncio.sleep(self.heartbeat_interval)
+                await self._send_heartbeat()
+        except asyncio.CancelledError:
+            logger.info("Heartbeat loop cancelled")
+        except Exception as e:
+            logger.error(f"Error in heartbeat loop: {e}")
+            raise
+            
+    async def _send_heartbeat(self):
+        """Send heartbeat with sequence number."""
+        try:
+            if self._rate_limit_remaining <= 0:
+                wait_time = self._rate_limit_reset - asyncio.get_event_loop().time()
+                if wait_time > 0:
+                    logger.warning(f"Rate limited, waiting {wait_time:.2f}s")
+                    await asyncio.sleep(wait_time)
+                    
+            payload = {
+                "op": OpCode.HEARTBEAT,
+                "d": self.sequence
+            }
+            await self.ws.send(json.dumps(payload))
+            self._rate_limit_remaining -= 1
+            logger.debug("Sent heartbeat")
+            
+        except Exception as e:
+            logger.error(f"Failed to send heartbeat: {e}")
+            raise
+            
+    async def _handle_reconnect(self):
+        """Handle reconnection when requested by Discord."""
+        try:
+            if self.ws:
+                await self.ws.close()
+                
+            self.ws = await websockets.connect(
+                f"wss://gateway.discord.gg/?v={self.config.version}&encoding={self.config.encoding}"
+            )
+            
+            if self.session_id and self.sequence:
+                await self._resume()
+            else:
+                await self._handle_hello()
+                await self._identify()
+                
+        except Exception as e:
+            logger.error(f"Failed to reconnect: {e}")
+            raise
+            
+    async def _resume(self):
+        """Resume a disconnected session."""
+        try:
+            payload = {
+                "op": OpCode.RESUME,
+                "d": {
+                    "token": self.config.token,
+                    "session_id": self.session_id,
+                    "seq": self.sequence
+                }
+            }
+            await self.ws.send(json.dumps(payload))
+            logger.info("Sent RESUME")
+            
+        except Exception as e:
+            logger.error(f"Failed to resume session: {e}")
+            raise
+            
+    async def _handle_invalid_session(self, resumable: bool):
+        """Handle invalid session response."""
+        try:
+            logger.warning(f"Session invalidated, resumable: {resumable}")
+            
+            if self.ws:
+                await self.ws.close()
+                
+            await asyncio.sleep(1 + (2 * random.random()))  # Random delay between 1-3s
+            
+            self.ws = await websockets.connect(
+                f"wss://gateway.discord.gg/?v={self.config.version}&encoding={self.config.encoding}"
+            )
+            
+            if resumable and self.session_id and self.sequence:
+                await self._resume()
+            else:
+                self.session_id = None
+                self.sequence = None
+                await self._handle_hello()
+                await self._identify()
+                
+        except Exception as e:
+            logger.error(f"Failed to handle invalid session: {e}")
             raise
