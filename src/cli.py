@@ -361,7 +361,7 @@ class ZerePyCLI:
         agent_general_config_path = Path("agents") / "general.json"
         file = None
         try:
-            file = open(agent_general_config_path, 'r')
+            file = open(agent_general_config_path, 'r', encoding="utf-8")
             data = json.load(file)
             if not data.get('default_agent'):
                 logger.error('No default agent defined, please set one in general.json')
@@ -469,19 +469,19 @@ class ZerePyCLI:
         agent_general_config_path = Path("agents") / "general.json"
         file = None
         try:
-            file = open(agent_general_config_path, 'r')
+            file = open(agent_general_config_path, 'r', encoding="utf-8")
             data = json.load(file)
             agent_file_name = input_list[1]
             # if file does not exist, refuse to set it as default
             try:
                 agent_path = Path("agents") / f"{agent_file_name}.json"
-                open(agent_path, 'r')
+                open(agent_path, 'r', encoding="utf-8")
             except FileNotFoundError:
                 logging.error("Agent file not found.")
                 return
             
             data['default_agent'] = input_list[1]
-            with open(agent_general_config_path, 'w') as f:
+            with open(agent_general_config_path, 'w', encoding="utf-8") as f:
                 json.dump(data, f, indent=4)
             logger.info(f"Agent {agent_file_name} is now set as default.")
         except FileNotFoundError:
@@ -533,7 +533,7 @@ class ZerePyCLI:
 
         if (run_langchain.lower() == 'y'):
             #load langgraph agent 
-            self.langgraph_agent = LangGraphAgent(self.agent_file_name, True,connection_manager=self.agent.connection_manager) 
+            self.langgraph_agent = LangGraphAgent(self.agent_file_name, True, connection_manager=self.agent.connection_manager)
             langchain_session = True
             messages = []
 
@@ -575,8 +575,8 @@ class ZerePyCLI:
             task_to_perform = None
 
         print_h_bar()
-        graph_agent = GraphAgent(self.agent_file_name,run_mode=RunMode.AUTONOMOUS)
-        final_state = graph_agent.run(task=task_to_perform)
+        graph_agent = GraphAgent(self.agent_file_name)
+        final_state = graph_agent.run(run_mode=RunMode.AUTONOMOUS,task=task_to_perform)
         print(f"Final state: {final_state}")
 
 
