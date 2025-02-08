@@ -1,10 +1,12 @@
 import os
 import logging
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional, cast
 from requests_oauthlib import OAuth1Session
 from dotenv import set_key, load_dotenv
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
 from src.helpers import print_h_bar
+from src.types.connections import TwitterConfig
+from src.types.config import BaseConnectionConfig
 
 logger = logging.getLogger("connections.twitter_connection")
 
@@ -21,29 +23,27 @@ class TwitterAPIError(TwitterConnectionError):
     pass
 
 class TwitterConnection(BaseConnection):
+    _oauth_session: Optional[OAuth1Session]
+    
     def __init__(self, config: Dict[str, Any]):
-        super().__init__(config)
+        logger.info("Initializing Twitter connection...")
+        # Validate config before passing to super
+        validated_config = TwitterConfig(**config)
+        super().__init__(validated_config)
         self._oauth_session = None
 
     @property
     def is_llm_provider(self) -> bool:
         return False
 
-    def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate Twitter configuration from JSON"""
-        required_fields = ["timeline_read_count", "tweet_interval"]
-        missing_fields = [field for field in required_fields if field not in config]
-        
-        if missing_fields:
-            raise ValueError(f"Missing required configuration fields: {', '.join(missing_fields)}")
-            
-        if not isinstance(config["timeline_read_count"], int) or config["timeline_read_count"] <= 0:
-            raise ValueError("timeline_read_count must be a positive integer")
-
-        if not isinstance(config["tweet_interval"], int) or config["tweet_interval"] <= 0:
-            raise ValueError("tweet_interval must be a positive integer")
-            
-        return config
+    def validate_config(self, config: Dict[str, Any]) -> BaseConnectionConfig:
+        """Validate Twitter configuration from JSON and convert to Pydantic model"""
+        try:
+            # Convert dict config to Pydantic model
+            validated_config = TwitterConfig(**config)
+            return validated_config
+        except Exception as e:
+            raise ValueError(f"Invalid Twitter configuration: {str(e)}")
 
     def register_actions(self) -> None:
         """Register available Twitter actions"""
@@ -356,7 +356,8 @@ class TwitterConnection(BaseConnection):
 
         # Add config parameters if not provided
         if action_name == "read-timeline" and "count" not in kwargs:
-            kwargs["count"] = self.config["timeline_read_count"]
+            config = cast(TwitterConfig, self.config)
+            kwargs["count"] = config.timeline_read_count
 
         # Call the appropriate method based on action name
         method_name = action_name.replace('-', '_')
@@ -366,7 +367,8 @@ class TwitterConnection(BaseConnection):
     def read_timeline(self, count: int = None, **kwargs) -> list:
         """Read tweets from the user's timeline"""
         if count is None:
-            count = self.config["timeline_read_count"]
+            config = cast(TwitterConfig, self.config)
+            count = config.timeline_read_count
             
         logger.debug(f"Reading timeline, count: {count}")
         credentials = self._get_credentials()
