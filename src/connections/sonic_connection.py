@@ -2,7 +2,8 @@ import logging
 import os
 import requests
 import time
-from typing import Dict, Any, Optional, cast, Union
+from typing import Dict, Any, Optional, cast, Union, TypeGuard
+from typing_extensions import TypeGuard
 from dotenv import load_dotenv, set_key
 from web3 import Web3
 from web3.middleware import geth_poa_middleware
@@ -161,16 +162,17 @@ class SonicConnection(BaseConnection):
             logger.error(f"Configuration failed: {e}")
             return False
 
+    def _is_web3_instance(self, web3: Any) -> TypeGuard[Web3]:
+        """Type guard to check if an object is a valid Web3 instance"""
+        return isinstance(web3, Web3) and hasattr(web3, 'is_connected') and hasattr(web3, 'eth')
+
     def _get_web3(self, verbose: bool = False) -> Optional[Web3]:
         """Get a validated Web3 instance if available"""
         web3 = self._web3
-        if not web3:
+        if not web3 or not self._is_web3_instance(web3):
             if verbose:
                 logger.error("Web3 not initialized")
             return None
-
-        # Type assertion to help mypy understand web3 is a Web3 instance
-        assert isinstance(web3, Web3), "web3 must be a Web3 instance"
 
         try:
             # After this point, we know web3 is a Web3 instance
@@ -179,8 +181,6 @@ class SonicConnection(BaseConnection):
                     logger.error("Not connected to Sonic network")
                 return None
 
-            # Verify we can access eth property
-            _ = web3.eth
             return web3
         except Exception as e:
             if verbose:
