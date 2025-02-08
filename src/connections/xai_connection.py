@@ -1,9 +1,11 @@
 import logging
 import os
-from typing import Dict, Any
+from typing import Dict, Any, Optional, cast
 from openai import OpenAI
 from dotenv import set_key, load_dotenv
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
+from src.types.connections import XAIConfig
+from src.types.config import BaseConnectionConfig
 
 logger = logging.getLogger("connections.XAI_connection")
 
@@ -20,26 +22,27 @@ class XAIAPIError(XAIConnectionError):
     pass
 
 class XAIConnection(BaseConnection):
+    _client: Optional[OpenAI]
+    
     def __init__(self, config: Dict[str, Any]):
-        super().__init__(config)
+        logger.info("Initializing XAI connection...")
+        # Validate config before passing to super
+        validated_config = XAIConfig(**config)
+        super().__init__(validated_config)
         self._client = None
 
     @property
     def is_llm_provider(self) -> bool:
         return True
 
-    def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate XAI configuration from JSON"""
-        required_fields = ["model"]
-        missing_fields = [field for field in required_fields if field not in config]
-        
-        if missing_fields:
-            raise ValueError(f"Missing required configuration fields: {', '.join(missing_fields)}")
-            
-        if not isinstance(config["model"], str):
-            raise ValueError("model must be a string")
-            
-        return config
+    def validate_config(self, config: Dict[str, Any]) -> BaseConnectionConfig:
+        """Validate XAI configuration from JSON and convert to Pydantic model"""
+        try:
+            # Convert dict config to Pydantic model
+            validated_config = XAIConfig(**config)
+            return validated_config
+        except Exception as e:
+            raise ValueError(f"Invalid XAI configuration: {str(e)}")
 
     def register_actions(self) -> None:
         """Register available XAI actions"""
@@ -73,9 +76,10 @@ class XAIConnection(BaseConnection):
             api_key = os.getenv("XAI_API_KEY")
             if not api_key:
                 raise XAIConfigurationError("XAI API key not found in environment")
+            config = cast(XAIConfig, self.config)
             self._client = OpenAI(
                 api_key=api_key,
-                base_url="https://api.x.ai/v1",
+                base_url=config.base_url,
             )
         return self._client
 
@@ -135,17 +139,23 @@ class XAIConnection(BaseConnection):
         """Generate text using XAI models"""
         try:
             client = self._get_client()
+            config = cast(XAIConfig, self.config)
             
             # Use configured model if none provided
             if not model:
-                model = self.config["model"]
+                model = config.model
 
             response = client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "system", "content": system_prompt} if system_prompt else {"role": "system", "content": ""},
                     {"role": "user", "content": prompt},
-                ]
+                ],
+                temperature=config.temperature,
+                max_tokens=config.max_tokens if config.max_tokens else None,
+                top_p=config.top_p,
+                presence_penalty=config.presence_penalty,
+                frequency_penalty=config.frequency_penalty
             )
             return response.choices[0].message.content
             

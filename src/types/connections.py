@@ -125,6 +125,17 @@ class AlloraConfig(BlockchainConnectionConfig):
     api_url: Optional[str] = None
     inference_timeout: int = Field(default=30, gt=0)  # Timeout in seconds for inference requests
 
+class XAIConfig(LLMConnectionConfig):
+    """Configuration for XAI (x.ai) connection"""
+    name: str = "xai"
+    model: str = "grok-1"  # Default model
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    max_tokens: Optional[int] = Field(default=None, gt=0)
+    top_p: float = Field(default=1.0, ge=0.0, le=1.0)
+    presence_penalty: float = Field(default=0.0, ge=-2.0, le=2.0)
+    frequency_penalty: float = Field(default=0.0, ge=-2.0, le=2.0)
+    base_url: str = "https://api.x.ai/v1"  # XAI's API endpoint
+
 class DiscordConfig(BaseConnectionConfig):
     """Configuration for Discord connection"""
     name: str = "discord"
