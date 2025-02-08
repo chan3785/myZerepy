@@ -479,7 +479,34 @@ class XAIConfig(LLMConnectionConfig):
     base_url: str = "https://api.x.ai/v1"  # XAI's API endpoint
 
 class GaladrielConfig(LLMConnectionConfig):
-    """Configuration for Galadriel connection"""
+    """Configuration for Galadriel LLM connection with fine-tuning support.
+    
+    Example:
+        {
+            "name": "galadriel",
+            "model": "galadriel-v1",
+            "temperature": 0.7,
+            "max_tokens": 2000,
+            "top_p": 1.0,
+            "presence_penalty": 0.0,
+            "frequency_penalty": 0.0,
+            "base_url": "https://api.galadriel.com/v1/verified",
+            "fine_tune_api_key": "your-fine-tune-key",  # Optional, for fine-tuning only
+            "api_key": "your-api-key"  # Optional, can be set via environment variable
+        }
+    
+    Fields:
+        name: Connection identifier, must be "galadriel"
+        model: Galadriel model to use (e.g., "galadriel-v1")
+        temperature: Controls randomness in responses (0.0 to 2.0)
+        max_tokens: Maximum tokens in response (optional)
+        top_p: Top-p sampling parameter (0.0 to 1.0)
+        presence_penalty: Penalizes repeated presence of tokens (-2.0 to 2.0)
+        frequency_penalty: Penalizes repeated frequency of tokens (-2.0 to 2.0)
+        base_url: Galadriel API endpoint URL (default: https://api.galadriel.com/v1/verified)
+        fine_tune_api_key: API key for fine-tuning operations (optional)
+        api_key: Galadriel API key (optional if set in environment)
+    """
     name: str = "galadriel"
     model: str = "galadriel-v1"  # Default model
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
