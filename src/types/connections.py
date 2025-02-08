@@ -33,19 +33,31 @@ class AnthropicConfig(LLMConnectionConfig):
         {
             "name": "anthropic",
             "model": "claude-3-5-sonnet-20241022",
+            "temperature": 0.7,
             "max_tokens": 2000,
+            "top_p": 1.0,
+            "presence_penalty": 0.0,
+            "frequency_penalty": 0.0,
             "api_key": "your-api-key"  # Optional, can be set via environment variable
         }
     
     Fields:
         name: Connection identifier, must be "anthropic"
         model: Anthropic model to use (e.g., "claude-3-5-sonnet-20241022")
+        temperature: Controls randomness in responses (0.0 to 2.0)
         max_tokens: Maximum tokens in response (optional)
+        top_p: Top-p sampling parameter (0.0 to 1.0)
+        presence_penalty: Penalizes repeated presence of tokens (-2.0 to 2.0)
+        frequency_penalty: Penalizes repeated frequency of tokens (-2.0 to 2.0)
         api_key: Anthropic API key (optional if set in environment)
     """
     name: str = "anthropic"
     model: str = "claude-3-5-sonnet-20241022"
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: Optional[int] = Field(default=None, gt=0)
+    top_p: float = Field(default=1.0, ge=0.0, le=1.0)
+    presence_penalty: float = Field(default=0.0, ge=-2.0, le=2.0)
+    frequency_penalty: float = Field(default=0.0, ge=-2.0, le=2.0)
 
 class SolanaConfig(BlockchainConnectionConfig):
     """Configuration for Solana blockchain connection.
