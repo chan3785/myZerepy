@@ -443,7 +443,32 @@ class AlloraConfig(BlockchainConnectionConfig):
     inference_timeout: int = Field(default=30, gt=0)  # Timeout in seconds for inference requests
 
 class XAIConfig(LLMConnectionConfig):
-    """Configuration for XAI (x.ai) connection"""
+    """Configuration for XAI (x.ai) LLM connection.
+    
+    Example:
+        {
+            "name": "xai",
+            "model": "grok-1",
+            "temperature": 0.7,
+            "max_tokens": 2000,
+            "top_p": 1.0,
+            "presence_penalty": 0.0,
+            "frequency_penalty": 0.0,
+            "base_url": "https://api.x.ai/v1",
+            "api_key": "your-api-key"  # Optional, can be set via environment variable
+        }
+    
+    Fields:
+        name: Connection identifier, must be "xai"
+        model: XAI model to use (e.g., "grok-1")
+        temperature: Controls randomness in responses (0.0 to 2.0)
+        max_tokens: Maximum tokens in response (optional)
+        top_p: Top-p sampling parameter (0.0 to 1.0)
+        presence_penalty: Penalizes repeated presence of tokens (-2.0 to 2.0)
+        frequency_penalty: Penalizes repeated frequency of tokens (-2.0 to 2.0)
+        base_url: XAI API endpoint URL (default: https://api.x.ai/v1)
+        api_key: XAI API key (optional if set in environment)
+    """
     name: str = "xai"
     model: str = "grok-1"  # Default model
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
