@@ -9,6 +9,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.11"
 python-dotenv = "^1.0.1"
+pydantic = "^2.5.3"
 openai = "^1.57.2"
 prompt-toolkit = "^3.0.48"
 anthropic = "^0.42.0"
