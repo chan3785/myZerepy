@@ -2,13 +2,15 @@ import logging
 import os
 import requests
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, cast
 from dotenv import load_dotenv, set_key
 from web3 import Web3
 from web3.middleware import geth_poa_middleware
 from src.constants.abi import ERC20_ABI
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
 from src.constants.networks import SONIC_NETWORKS
+from src.types.connections import SonicConfig
+from src.types.config import BaseConnectionConfig
 
 logger = logging.getLogger("connections.sonic_connection")
 
@@ -18,25 +20,34 @@ class SonicConnectionError(Exception):
     pass
 
 class SonicConnection(BaseConnection):
+    _web3: Optional[Web3]
+    explorer: str
+    rpc_url: str
+    ERC20_ABI: Any
+    NATIVE_TOKEN: str
+    aggregator_api: str
     
     def __init__(self, config: Dict[str, Any]):
         logger.info("Initializing Sonic connection...")
+        # Validate config before passing to super
+        validated_config = SonicConfig(**config)
+        super().__init__(validated_config)
+        
         self._web3 = None
         
         # Get network configuration
-        network = config.get("network", "mainnet")
+        network = validated_config.network
         if network not in SONIC_NETWORKS:
             raise ValueError(f"Invalid network '{network}'. Must be one of: {', '.join(SONIC_NETWORKS.keys())}")
             
         network_config = SONIC_NETWORKS[network]
-        self.explorer = network_config["scanner_url"]
-        self.rpc_url = network_config["rpc_url"]
+        self.explorer = validated_config.explorer_url or network_config["scanner_url"]
+        self.rpc_url = validated_config.rpc_url or network_config["rpc_url"]
         
-        super().__init__(config)
         self._initialize_web3()
         self.ERC20_ABI = ERC20_ABI
         self.NATIVE_TOKEN = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
-        self.aggregator_api = "https://aggregator-api.kyberswap.com/sonic/api/v1"
+        self.aggregator_api = validated_config.aggregator_api
 
     def _get_explorer_link(self, tx_hash: str) -> str:
         """Generate block explorer link for transaction"""
@@ -60,17 +71,19 @@ class SonicConnection(BaseConnection):
     def is_llm_provider(self) -> bool:
         return False
 
-    def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate Sonic configuration from JSON"""
-        required = ["network"]
-        missing = [field for field in required if field not in config]
-        if missing:
-            raise ValueError(f"Missing config fields: {', '.join(missing)}")
-        
-        if config["network"] not in SONIC_NETWORKS:
-            raise ValueError(f"Invalid network '{config['network']}'. Must be one of: {', '.join(SONIC_NETWORKS.keys())}")
+    def validate_config(self, config: Dict[str, Any]) -> BaseConnectionConfig:
+        """Validate Sonic configuration from JSON and convert to Pydantic model"""
+        try:
+            # Convert dict config to Pydantic model
+            validated_config = SonicConfig(**config)
             
-        return config
+            # Additional validation for network
+            if validated_config.network not in SONIC_NETWORKS:
+                raise ValueError(f"Invalid network '{validated_config.network}'. Must be one of: {', '.join(SONIC_NETWORKS.keys())}")
+            
+            return validated_config
+        except Exception as e:
+            raise ValueError(f"Invalid Sonic configuration: {str(e)}")
 
     def get_token_by_ticker(self, ticker: str) -> Optional[str]:
         """Get token address by ticker symbol"""

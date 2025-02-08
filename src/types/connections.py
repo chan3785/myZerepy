@@ -108,6 +108,16 @@ class EchoChamberConfig(BaseConnectionConfig):
     history_read_count: int = Field(default=100, gt=0)
     post_history_track: int = Field(default=50, gt=0)
 
+class SonicConfig(BlockchainConnectionConfig):
+    """Configuration for Sonic connection"""
+    name: str = "sonic"
+    network: str = "mainnet"
+    rpc_url: Optional[str] = None  # Optional since it can be derived from network
+    explorer_url: Optional[str] = None  # Optional since it can be derived from network
+    aggregator_api: str = "https://aggregator-api.kyberswap.com/sonic/api/v1"
+    max_queue_size: int = Field(default=100, gt=0)
+    gas_limit: Optional[int] = Field(default=None, gt=0)
+
 class DiscordConfig(BaseConnectionConfig):
     """Configuration for Discord connection"""
     name: str = "discord"
