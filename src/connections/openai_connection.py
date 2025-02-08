@@ -158,8 +158,9 @@ class OpenAIConnection(BaseConnection):
             response = client.models.list().data
             model_list: List[str] = []
             
+            # Filter fine-tuned models
             fine_tuned_models = [
-                model for model in response 
+                str(model.id) for model in response 
                 if model.owned_by in ["organization", "user", "organization-owner"]
             ]
 
@@ -178,9 +179,9 @@ class OpenAIConnection(BaseConnection):
             
             if fine_tuned_models:
                 logger.info("\nFINE-TUNED MODELS:")
-                for i, model in enumerate(fine_tuned_models, 1):
-                    model_list.append(model.id)
-                    logger.info(f"{i}. {model.id}")
+                for i, model_id in enumerate(fine_tuned_models, 1):
+                    model_list.append(model_id)
+                    logger.info(f"{i}. {model_id}")
             
             return model_list
                     
