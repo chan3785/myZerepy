@@ -1,11 +1,11 @@
 import logging
 import os
-from typing import Dict, Any, Optional, cast
+from typing import Dict, Any, Optional, cast, List
 
 import requests
 from dotenv import load_dotenv, set_key
 from openai import OpenAI
-from src.connections.base_connection import BaseConnection, Action, ActionParameter
+from src.connections.base_connection import BaseConnection
 from src.types.connections import GaladrielConfig
 from src.types.config import BaseConnectionConfig
 
@@ -51,15 +51,7 @@ class GaladrielConnection(BaseConnection):
     def register_actions(self) -> None:
         """Register available Galadriel actions"""
         self.actions = {
-            "generate-text": Action(
-                name="generate-text",
-                parameters=[
-                    ActionParameter("prompt", True, str, "The input prompt for text generation"),
-                    ActionParameter("system_prompt", True, str, "System prompt to guide the model"),
-                    ActionParameter("model", False, str, "Model to use for generation")
-                ],
-                description="Generate text using Galadriel models"
-            ),
+            "generate-text": self.generate_text,
         }
 
     def _get_client(self) -> OpenAI:
@@ -78,13 +70,13 @@ class GaladrielConnection(BaseConnection):
             self._client = OpenAI(api_key=api_key, base_url=config.base_url, default_headers=headers)
         return self._client
 
-    def configure(self) -> bool:
+    def configure(self, **kwargs: Any) -> bool:
         """Sets up Galadriel API authentication"""
         logger.info("\n🤖 GALADRIEL API SETUP")
 
         if self.is_configured():
             logger.info("\nGaladriel API is already configured.")
-            response = input("Do you want to reconfigure? (y/n): ")
+            response = kwargs.get("response") or input("Do you want to reconfigure? (y/n): ")
             if response.lower() != 'y':
                 return True
 
@@ -92,8 +84,8 @@ class GaladrielConnection(BaseConnection):
         logger.info("1. Go to https://dashboard.galadriel.com/dashboard/api_keys")
         logger.info("2. Create a new API key.")
 
-        api_key = input("\nEnter your Galadriel API key: ")
-        fine_tune_api_key = input("\nEnter your Optional fine-tune API key: ")
+        api_key = kwargs.get("api_key") or input("\nEnter your Galadriel API key: ")
+        fine_tune_api_key = kwargs.get("fine_tune_api_key") or input("\nEnter your Optional fine-tune API key: ")
 
         try:
             if not os.path.exists('.env'):
@@ -117,7 +109,7 @@ class GaladrielConnection(BaseConnection):
             logger.error(f"Configuration failed: {e}")
             return False
 
-    def is_configured(self, verbose = False) -> bool:
+    def is_configured(self, verbose: bool = False) -> bool:
         """Check if Galadriel API key is configured and valid"""
         try:
             load_dotenv()
@@ -131,9 +123,11 @@ class GaladrielConnection(BaseConnection):
                 logger.debug(f"Configuration check failed: {e}")
             return False
 
-    def _is_api_key_valid(self, api_key):
+    def _is_api_key_valid(self, api_key: str) -> bool:
+        """Check if the API key is valid by making a test request"""
+        config = cast(GaladrielConfig, self.config)
         response = requests.get(
-            f"{API_BASE_URL}/chat/completions",
+            f"{config.base_url}/chat/completions",
             headers={
                 "Authorization": f"Bearer {api_key}"
             },
@@ -141,7 +135,7 @@ class GaladrielConnection(BaseConnection):
         )
         return response.status_code != 401
 
-    def generate_text(self, prompt: str, system_prompt: str, model: str = None, **kwargs) -> str:
+    def generate_text(self, prompt: str, system_prompt: str, model: Optional[str] = None, **kwargs: Any) -> str:
         """Generate text using Galadriel models"""
         try:
             client = self._get_client()
@@ -164,20 +158,18 @@ class GaladrielConnection(BaseConnection):
                 frequency_penalty=config.frequency_penalty
             )
 
-            return completion.choices[0].message.content
+            content = completion.choices[0].message.content
+            if content is None:
+                raise GaladrielAPIError("No content returned from API")
+            return content
 
         except Exception as e:
             raise GaladrielAPIError(f"Text generation failed: {e}")
 
-    def perform_action(self, action_name: str, kwargs) -> Any:
+    def perform_action(self, action_name: str, **kwargs: Any) -> Any:
         """Execute an action with validation"""
         if action_name not in self.actions:
             raise KeyError(f"Unknown action: {action_name}")
-
-        action = self.actions[action_name]
-        errors = action.validate_params(kwargs)
-        if errors:
-            raise ValueError(f"Invalid parameters: {', '.join(errors)}")
 
         # Call the appropriate method based on action name
         method_name = action_name.replace('-', '_')
