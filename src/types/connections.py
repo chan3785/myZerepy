@@ -293,7 +293,22 @@ class HyperbolicConfig(LLMConnectionConfig):
     frequency_penalty: float = Field(default=0.0, ge=-2.0, le=2.0)
 
 class PluginConfig(BaseModel):
-    """Configuration for a Goat plugin"""
+    """Configuration for a Goat plugin.
+    
+    Example:
+        {
+            "name": "erc20",
+            "args": {
+                "contract_address": "0x1234...",
+                "chain_id": 1,
+                "decimals": 18
+            }
+        }
+    
+    Fields:
+        name: Plugin identifier (e.g., "erc20", "coingecko")
+        args: Plugin-specific configuration arguments
+    """
     name: str
     args: Dict[str, Any]
 
