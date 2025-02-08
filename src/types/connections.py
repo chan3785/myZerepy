@@ -118,6 +118,13 @@ class SonicConfig(BlockchainConnectionConfig):
     max_queue_size: int = Field(default=100, gt=0)
     gas_limit: Optional[int] = Field(default=None, gt=0)
 
+class AlloraConfig(BlockchainConnectionConfig):
+    """Configuration for Allora Network connection"""
+    name: str = "allora"
+    chain_slug: str = "testnet"  # Default to testnet as per connection class
+    api_url: Optional[str] = None
+    inference_timeout: int = Field(default=30, gt=0)  # Timeout in seconds for inference requests
+
 class DiscordConfig(BaseConnectionConfig):
     """Configuration for Discord connection"""
     name: str = "discord"

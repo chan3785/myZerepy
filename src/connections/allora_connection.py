@@ -1,8 +1,10 @@
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, cast
 from dotenv import set_key
 from allora_sdk.v2.api_client import AlloraAPIClient, ChainSlug
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
+from src.types.connections import AlloraConfig
+from src.types.config import BaseConnectionConfig
 import os
 import asyncio
 
@@ -21,10 +23,17 @@ class AlloraAPIError(AlloraConnectionError):
     pass
 
 class AlloraConnection(BaseConnection):
+    _client: Optional[AlloraAPIClient]
+    chain_slug: str
+    
     def __init__(self, config: Dict[str, Any]):
-        super().__init__(config)
+        logger.info("Initializing Allora connection...")
+        # Validate config before passing to super
+        validated_config = AlloraConfig(**config)
+        super().__init__(validated_config)
+        
         self._client = None
-        self.chain_slug = config.get("chain_slug", ChainSlug.TESTNET)
+        self.chain_slug = validated_config.chain_slug
 
     @property
     def is_llm_provider(self) -> bool:
@@ -120,10 +129,14 @@ class AlloraConnection(BaseConnection):
             logger.error(f"Configuration failed: {e}")
             return False
 
-    def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate Allora configuration from JSON"""
-        # No required fields for Allora connection
-        return config
+    def validate_config(self, config: Dict[str, Any]) -> BaseConnectionConfig:
+        """Validate Allora configuration from JSON and convert to Pydantic model"""
+        try:
+            # Convert dict config to Pydantic model
+            validated_config = AlloraConfig(**config)
+            return validated_config
+        except Exception as e:
+            raise ValueError(f"Invalid Allora configuration: {str(e)}")
 
     def is_configured(self, verbose: bool = False) -> bool:
         """Check if Allora API is configured"""
