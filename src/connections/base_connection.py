@@ -33,9 +33,9 @@ T = TypeVar('T', bound=BaseConnectionConfig)
 
 class BaseConnection(ABC):
     config: BaseConnectionConfig
-    actions: Dict[str, Callable]
+    actions: Dict[str, Callable[..., Any]]
 
-    def __init__(self, config: Union[Dict[str, Any], BaseConnectionConfig]):
+    def __init__(self, config: Union[Dict[str, Any], BaseConnectionConfig]) -> None:
         try:
             # Dictionary to store action name -> handler method mapping
             self.actions = {}
@@ -76,7 +76,7 @@ class BaseConnection(ABC):
         """
 
     @abstractmethod
-    def configure(self, **kwargs) -> bool:
+    def configure(self, **kwargs: Any) -> bool:
         """
         Configure the connection with necessary credentials.
         
@@ -89,10 +89,13 @@ class BaseConnection(ABC):
         pass
 
     @abstractmethod
-    def is_configured(self, verbose = False) -> bool:
+    def is_configured(self, verbose: bool = False) -> bool:
         """
         Check if the connection is properly configured and ready for use.
         
+        Args:
+            verbose: Whether to print additional configuration details
+            
         Returns:
             bool: True if the connection is configured, False otherwise
         """
