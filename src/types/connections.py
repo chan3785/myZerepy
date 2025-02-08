@@ -260,7 +260,30 @@ class EternalAIConfig(LLMConnectionConfig):
     rpc_url: Optional[str] = None
 
 class HyperbolicConfig(LLMConnectionConfig):
-    """Configuration for Hyperbolic connection"""
+    """Configuration for Hyperbolic LLM connection.
+    
+    Example:
+        {
+            "name": "hyperbolic",
+            "model": "hyperbolic-v1",
+            "temperature": 0.7,
+            "max_tokens": 2000,
+            "top_p": 1.0,
+            "presence_penalty": 0.0,
+            "frequency_penalty": 0.0,
+            "api_key": "your-api-key"  # Optional, can be set via environment variable
+        }
+    
+    Fields:
+        name: Connection identifier, must be "hyperbolic"
+        model: Hyperbolic model to use (e.g., "hyperbolic-v1")
+        temperature: Controls randomness in responses (0.0 to 2.0)
+        max_tokens: Maximum tokens in response (optional)
+        top_p: Top-p sampling parameter (0.0 to 1.0)
+        presence_penalty: Penalizes repeated presence of tokens (-2.0 to 2.0)
+        frequency_penalty: Penalizes repeated frequency of tokens (-2.0 to 2.0)
+        api_key: Hyperbolic API key (optional if set in environment)
+    """
     name: str = "hyperbolic"
     model: str = "hyperbolic-v1"
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
