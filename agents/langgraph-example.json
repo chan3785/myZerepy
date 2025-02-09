@@ -47,10 +47,5 @@
       "driver_model": "gpt-4o-mini",
       "character_model": "gpt-4o-mini",
       "executor_model": "gpt-4o-mini"
-    },
-    "use_time_based_weights": false,
-    "time_based_multipliers": {
-      "tweet_night_multiplier": 0.4,
-      "engagement_day_multiplier": 1.5
     }
    }
