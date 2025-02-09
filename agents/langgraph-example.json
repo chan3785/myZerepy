@@ -18,7 +18,6 @@
      "example_accounts": [
        "0xzerebro"
      ],
-     "run_mode": "dice-roll",
      "loop_delay": 900,
      "config": [
        {
