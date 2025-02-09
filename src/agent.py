@@ -5,7 +5,8 @@ from typing_extensions import TypedDict
 from src.helpers import print_h_bar
 from src.langgraph.langgraph_agent import LangGraphAgent
 from src.connection_manager import ConnectionManager
-from src.langgraph.prompts import DETERMINATION_PROMPT, DIVISION_PROMPT, EXECUTION_PROMPT, EVALUATION_PROMPT
+from src.langgraph.prompts import DETERMINATION_PROMPT, DIVISION_PROMPT, EXECUTION_PROMPT, EVALUATION_PROMPT, \
+    OBSERVATION_PROMPT
 from pathlib import Path
 from src.action_handler import execute_action
 import src.actions
@@ -266,23 +267,29 @@ class ZerePyAgent:
         
         except Exception as e:
             self.logger.error(f"Error replenishing inputs: {e}")
-    
+
 
     def observation_step(self, state: AgentState):
         print("\n=== OBSERVATION STEP ===")
+        print(f"Current Context: {state['context']}")
 
         # Replenish inputs
         self._replenish_inputs()
 
-        #update AgentState context 
+        # Update AgentState context
         state["context"] = self.context
-                
-        # TODO: USE LLM TO SUMMARIZE CONTEXT IF NOT ON DICE_ROLL MODE
-        context_summary = "There is currently no additional context available."
 
-        print(f"Current Context: {state['context']}")
-        
-        return {"context_summary": context_summary}
+        if (state['run_mode'] == RunMode.DICE_ROLL):
+            return state
+        else:
+            try:
+                observation_prompt = OBSERVATION_PROMPT.format(context=state['context'], task_log=state['task_log'])
+                context_summary = self.driver_llm.invoke(observation_prompt).content
+            except Exception as e:
+                self.logger.error(f"Error generating context summary: {e}")
+                context_summary = "There is currently no additional context available."
+
+            return {"context_summary": context_summary}
 
     def determination_step(self, state: AgentState):
         print("\n=== DETERMINATION STEP ===")

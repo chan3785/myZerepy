@@ -1,3 +1,8 @@
+OBSERVATION_PROMPT = ("TASK:\nSummarize the provided context and list of previous tasks in a short list of key points. Your summary will be used to help decide what to do next, so include anything relevant to the next task selection.\n\n"
+                          "Guidelines:\n- Keep it concise and relevant\n- Avoid generic statements\n- Think critically about what information is useful for deciding which task should be performed next\n\n"
+                          "CONTEXT:\n{context}\n\n"
+                          "PREVIOUS TASKS:\n{task_log}\n\n"
+                          "SUMMARY:\n")
 
 DETERMINATION_PROMPT = """Based on the given context and available actions, generate a complex task that you desire to perform. Only respond with the task, and do not include any other text in your response. Your task can involve multiple chained actions. You do not need to provide any reasoning for the task. If you are given context, you may choose whether or not to use it. If you do not have context, you must still choose a task to perform.\n\n"
                         "CONTEXT SUMMARY:\n{context_summary}"
@@ -44,5 +49,3 @@ EVALUATION_PROMPT = ("Based on the action log, provide a summary of what the age
                    "Action Log:\n" 
                    "{action_log}"
                    "\nExample Generated summary:\n Task: Make a funny tweet:\n1. Generated a witty joke using OpenAI : 'funny tweet generated'. 2. Posted 'funny tweet generated' joke on Twitter.")
-
-
