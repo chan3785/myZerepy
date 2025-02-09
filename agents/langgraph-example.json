@@ -18,6 +18,7 @@
      "example_accounts": [
        "0xzerebro"
      ],
+     "run_mode": "dice-roll",
      "loop_delay": 900,
      "config": [
        {
@@ -33,16 +34,6 @@
        {
          "name": "solana",
          "rpc": "https://api.mainnet-beta.solana.com"
-       },
-       {
-         "name": "discord",
-         "message_read_count": 10,
-         "message_emoji_name": "❤️",
-         "server_id": "1234567890"
-       },
-       {
-         "name" : "groq",
-         "model": "llama-3.3-70b-versatile"
        }
      ],
      "tasks": [
@@ -50,16 +41,16 @@
        {"name": "reply-to-tweet", "weight": 1},
        {"name": "like-tweet", "weight": 1}
      ],
-     "use_time_based_weights": false,
-     "time_based_multipliers": {
-       "tweet_night_multiplier": 0.4,
-       "engagement_day_multiplier": 1.5
-     },
      "langchain_config": {
       "use_langchain": true,
       "provider": "openai", 
       "driver_model": "gpt-4o-mini",
       "character_model": "gpt-4o-mini",
       "executor_model": "gpt-4o-mini"
+    },
+    "use_time_based_weights": false,
+    "time_based_multipliers": {
+      "tweet_night_multiplier": 0.4,
+      "engagement_day_multiplier": 1.5
     }
    }

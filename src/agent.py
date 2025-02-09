@@ -64,8 +64,8 @@ class ZerePyAgent:
             self.task_weights = [task.get("weight", 0) for task in self.tasks]
             self.logger = logging.getLogger("agent")
 
-            # Set up empty agent state
-            self.state = {}
+            # Set up empty agent context
+            self.context = {}
 
         except Exception as e:
             logger.error("Could not load ZerePy agent")
@@ -144,9 +144,6 @@ class ZerePyAgent:
             action_name="generate-text",
             params=[prompt, system_prompt]
         )
-
-    def perform_action(self, connection: str, action: str, **kwargs) -> None:
-        return self.connection_manager.perform_action(connection, action, **kwargs)
     
     def select_action(self, use_time_based_weights: bool = False) -> dict:
         task_weights = [weight for weight in self.task_weights.copy()]
@@ -178,19 +175,19 @@ class ZerePyAgent:
                 try:
                     # REPLENISH INPUTS
                     # TODO: Add more inputs to complexify agent behavior
-                    if "timeline_tweets" not in self.state or self.state["timeline_tweets"] is None or len(self.state["timeline_tweets"]) == 0:
+                    if "timeline_tweets" not in self.context or self.context["timeline_tweets"] is None or len(self.context["timeline_tweets"]) == 0:
                         if any("tweet" in task["name"] for task in self.tasks):
                             logger.info("\n👀 READING TIMELINE")
-                            self.state["timeline_tweets"] = self.connection_manager.perform_action(
+                            self.context["timeline_tweets"] = self.connection_manager.perform_action(
                                 connection_name="twitter",
                                 action_name="read-timeline",
                                 params=[]
                             )
 
-                    if "room_info" not in self.state or self.state["room_info"] is None:
+                    if "room_info" not in self.context or self.context["room_info"] is None:
                         if any("echochambers" in task["name"] for task in self.tasks):
                             logger.info("\n👀 READING ECHOCHAMBERS ROOM INFO")
-                            self.state["room_info"] = self.connection_manager.perform_action(
+                            self.context["room_info"] = self.connection_manager.perform_action(
                                 connection_name="echochambers",
                                 action_name="get-room-info",
                                 params={}
