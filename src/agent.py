@@ -289,8 +289,13 @@ class ZerePyAgent:
         task = state['current_task']
 
         if (state['run_mode'] == RunMode.DICE_ROLL):
-            action = self._select_action(use_time_based_weights=self.use_time_based_weights)
-            task = action["name"]
+            
+            if (len(state['action_log']) != 0): #retry failed task from previous loop
+                task = state['action_log'][0]['action']
+            else:
+                action = self._select_action(use_time_based_weights=self.use_time_based_weights)
+                task = action["name"]
+
         elif (task is None):
             print(f"Determining task from context: {state['context_summary']}")
             determination_prompt = DETERMINATION_PROMPT.format(context_summary=state['context_summary'], connection_action_list="\n\n".join(connection.__str__() for connection in self.connections.values()))
@@ -357,6 +362,7 @@ class ZerePyAgent:
         if (state['run_mode'] == RunMode.DICE_ROLL):
             if (state['action_log'][0]['result']):
                 self.logger.info(f"\n⏳ Waiting {self.loop_delay} seconds before next loop...")
+                state['action_log'] = [] #clear action log
                 time.sleep(self.loop_delay)
             else:
                 self.logger.info(f"\n⏳ Tasked failed, delaying 60 seconds to retry...")
