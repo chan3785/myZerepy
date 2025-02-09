@@ -18,7 +18,7 @@ class LangGraphAgent:
 
     def _load_agent_config(self, agent_name: str):
         agent_path = Path("agents") / f"{agent_name}.json"
-        agent_dict = json.load(open(agent_path, "r"))
+        agent_dict = json.load(open(agent_path, "r", encoding="utf-8"))
 
         if "langchain_config" not in agent_dict or not agent_dict["langchain_config"].get("use_langchain", False):
             raise ValueError("You must have a langchain_config configuration in your agent file to use LangGraphAgent")

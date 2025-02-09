@@ -360,7 +360,7 @@ class GoatConnection(BaseConnection):
             # Save to .env
             if not os.path.exists(".env"):
                 logger.debug("Creating new .env file")
-                with open(".env", "w") as f:
+                with open(".env", "w", encoding="utf-8") as f:
                     f.write("")
 
             env_vars = {
