@@ -36,11 +36,6 @@
          "rpc": "https://api.mainnet-beta.solana.com"
        }
      ],
-     "tasks": [
-       {"name": "post-tweet", "weight": 1},
-       {"name": "reply-to-tweet", "weight": 1},
-       {"name": "like-tweet", "weight": 1}
-     ],
      "langchain_config": {
       "use_langchain": true,
       "provider": "openai", 
