@@ -10,10 +10,9 @@ from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.history import FileHistory
-from src.agent import ZerePyAgent
+from src.agent import ZerePyAgent, RunMode
 from src.helpers import print_h_bar
 from src.langgraph.langgraph_agent import LangGraphAgent
-from src.langgraph.graph_agent import GraphAgent,RunMode
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -35,7 +34,6 @@ class Command:
 class ZerePyCLI:
     def __init__(self):
         self.agent = None
-        self.agent_file_name = ""
         
         # Create config directory if it doesn't exist
         self.config_dir = Path.home() / '.zerepy'
@@ -92,7 +90,7 @@ class ZerePyCLI:
         self._register_command(
             Command(
                 name="agent-loop",
-                description="Starts the current agent's autonomous behavior loop.",
+                description="Starts the current agent's loop.",
                 tips=["Press Ctrl+C to stop the loop"],
                 handler=self.agent_loop,
                 aliases=['loop', 'start']
@@ -156,24 +154,6 @@ class ZerePyCLI:
             )
         )
 
-        self._register_command(
-            Command(
-                name="run-autonomous",
-                description="Run the graph agent in autonomous mode",
-                tips=["File is in langgraph/graph_agent.py"],
-                handler=self.run_graph,
-            )
-        )
-        
-
-        self._register_command(
-            Command(
-                name="run-dice",
-                description="Run the graph agent in dice roll mode",
-                tips=["File is in langgraph/graph_agent.py"],
-                handler=self.run_dice,
-            )
-        )
         ################## CONNECTIONS ################## 
         # List actions command
         self._register_command(
@@ -262,18 +242,18 @@ class ZerePyCLI:
         return HTML(f'<prompt>ZerePy-CLI</prompt> {agent_status} > ')
 
     def _handle_command(self, input_string: str) -> None:
-        """Parse and handle a command input"""
-        input_list = input_string.split()
-        command_string = input_list[0].lower()
+            """Parse and handle a command input"""
+            input_list = input_string.split()
+            command_string = input_list[0].lower()
 
-        try:
+        #try:
             command = self.commands.get(command_string)
             if command:
                 command.handler(input_list)
             else:
                 self._handle_unknown_command(command_string)
-        except Exception as e:
-            logger.error(f"Error executing command: {e}")
+        #except Exception as e:
+         #   logger.error(f"Error executing command: {e}")
 
     def _handle_unknown_command(self, command: str) -> None:
         """Handle unknown command with suggestions"""
@@ -355,7 +335,6 @@ class ZerePyCLI:
     def _load_agent_from_file(self, agent_name):
         try: 
             self.agent = ZerePyAgent(agent_name)
-            self.agent_file_name = agent_name
             logger.info(f"\n✅ Successfully loaded agent: {self.agent.name}")
         except FileNotFoundError:
             logger.error(f"Agent file not found: {agent_name}")
@@ -430,7 +409,25 @@ class ZerePyCLI:
             return
 
         try:
-            self.agent.loop()
+            #Agent mode to run 
+            mode_to_run = input("Run the agent in Autonomous mode or Dice roll mode? (a/d): ")
+
+            if (mode_to_run.lower() == 'a'):
+                logger.info(f"Running graph agent for agent [Autonomous]: {self.agent.name}")
+                task_to_perform = input("\n🔹 Enter the task to perform (e.g., 'Read the timeline, then write a tweet about it').\n"
+                                        "🔹 Or simply press Enter to let the agent decide its own task in a loop.\n\n➡️ Your task: "
+                )
+                if (task_to_perform == ""):
+                    task_to_perform = None
+
+                print_h_bar()
+                final_state = self.agent.run(run_mode=RunMode.AUTONOMOUS,task=task_to_perform)
+                print(f"Final state: {final_state}")
+            else:
+                logger.info(f"Running graph agent for agent [Dice-Roll]: {self.agent.name}")
+                print_h_bar()
+                self.agent.run(run_mode=RunMode.DICE_ROLL)
+               
         except KeyboardInterrupt:
             logger.info("\n🛑 Agent loop stopped by user.")
         except Exception as e:
@@ -572,27 +569,6 @@ class ZerePyCLI:
                 
             except KeyboardInterrupt:
                 break
-
-    def run_graph(self,arg=None) -> None:
-        """Test the graph agent"""
-        
-        logger.info(f"Running graph agent for agent [Autonomous]: {self.agent.name}")
-        task_to_perform = input("\n🔹 Enter the task to perform (e.g., 'Read the timeline, then write a tweet about it').\n"
-                                "🔹 Or simply press Enter to let the agent decide its own task.\n\n➡️ Your task: "
-        )
-        if (task_to_perform == ""):
-            task_to_perform = None
-
-        print_h_bar()
-        graph_agent = GraphAgent(self.agent_file_name)
-        final_state = graph_agent.run(run_mode=RunMode.AUTONOMOUS,task=task_to_perform)
-        print(f"Final state: {final_state}")
-
-    def run_dice(self,arg=None) ->None:
-        """ RUN the Graph agent in Dice roll mode"""
-        logger.info(f"Running graph agent for agent [Dice-Roll]: {self.agent.name}")
-        graph_agent = GraphAgent(self.agent_file_name)
-        graph_agent.run(run_mode=RunMode.DICE_ROLL)
 
     def exit(self, input_list: List[str]) -> None:
         """Exit the CLI gracefully"""

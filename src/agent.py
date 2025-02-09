@@ -1,118 +1,227 @@
-import json
-import random
-import time
-import logging
-import os
-from pathlib import Path
-from dotenv import load_dotenv
-from src.connection_manager import ConnectionManager
+import datetime, random,time,logging,json
+from enum import Enum
+from langgraph.graph import StateGraph, START, END
+from typing_extensions import TypedDict
 from src.helpers import print_h_bar
+from src.langgraph.langgraph_agent import LangGraphAgent
+from src.connection_manager import ConnectionManager
+from src.langgraph.prompts import DETERMINATION_PROMPT, DIVISION_PROMPT, EXECUTION_PROMPT, EVALUATION_PROMPT
+from pathlib import Path
 from src.action_handler import execute_action
-import src.actions.twitter_actions  
-import src.actions.echochamber_actions
-import src.actions.solana_actions
-from datetime import datetime
+import src.actions
 
-REQUIRED_FIELDS = ["name", "bio", "traits", "examples", "loop_delay", "config", "tasks"]
+class RunMode(Enum):
+    AUTONOMOUS = "autonomous"
+    CHAT = "chat"
+    DICE_ROLL = "dice-roll"
 
-logger = logging.getLogger("agent")
+class AgentState(TypedDict):
+    context: dict
+    context_summary: str
+    current_task: str | None
+    action_plan: list
+    action_log: list
+    task_log: list
+    run_mode: RunMode
 
 class ZerePyAgent:
-    def __init__(
-            self,
-            agent_name: str
-    ):
+    def __init__(self, agent_name: str):
         try:
-            agent_path = Path("agents") / f"{agent_name}.json"
-            agent_dict = json.load(open(agent_path, "r"))
+            #Initialize attributes
+            self.agent_name = agent_name
+            self.name = None
+            self.bio = None
+            self.traits = None
+            self.examples = None
+            self.example_accounts = None
+            self.loop_delay = None
+            self.use_time_based_weights = False
+            self.time_based_multipliers = {}
+            self.tasks = []
+            self.task_weights = []
+            self.config_dict = None
+            self.context = {} # temporary solution for dice-roll mode
+            self.logger = logging.getLogger("agent")
 
-            missing_fields = [field for field in REQUIRED_FIELDS if field not in agent_dict]
-            if missing_fields:
-                raise KeyError(f"Missing required fields: {', '.join(missing_fields)}")
+            self.llm_config = None
+            self.driver_llm = None
+            self.character_llm = None
+            self.executor_agent = None
 
-            self.name = agent_dict["name"]
-            self.bio = agent_dict["bio"]
-            self.traits = agent_dict["traits"]
-            self.examples = agent_dict["examples"]
-            self.example_accounts = agent_dict["example_accounts"]
-            self.loop_delay = agent_dict["loop_delay"]
-            self.connection_manager = ConnectionManager(agent_dict["config"])
-            self.use_time_based_weights = agent_dict["use_time_based_weights"]
-            self.time_based_multipliers = agent_dict["time_based_multipliers"]
+            # Load agent configuration
+            self._setup_agent_configs()
 
-            has_twitter_tasks = any("tweet" in task["name"] for task in agent_dict.get("tasks", []))
+            # Initialize managers and connections
+            self.connection_manager = ConnectionManager(self.config_dict)
+            self.connections = self.connection_manager.get_connections()
+
+            # Construct graph
+            self.graph_builder = StateGraph(AgentState)
+
+            # Add nodes
+            self.graph_builder.add_node("observation", self.observation_step)
+            self.graph_builder.add_node("determination", self.determination_step)
+            self.graph_builder.add_node("division", self.division_step)
+            self.graph_builder.add_node("execution", self.execution_step)
+            self.graph_builder.add_node("evaluation", self.evaluation_step)
+
+            # Add edges
+            self.graph_builder.add_edge(START, "observation")
+            self.graph_builder.add_edge("observation", "determination")
+            self.graph_builder.add_edge("determination", "division")
+            self.graph_builder.add_edge("division", "execution")
+            self.graph_builder.add_edge("execution", "evaluation")
+            self.graph_builder.add_conditional_edges("evaluation", self.route_to_end_or_loop,{"loop": "observation", END: END})
+    
+        
+        except Exception as e:
+            self.logger.error("Could not load Graph Agent")
+            raise e
+
+    def _setup_agent_configs(self):
+        try:
+            agent_path = Path("agents") / f"{self.agent_name}.json"
+            agent_dict = json.load(open(agent_path, "r", encoding="utf-8"))
+
+            # Load basic configuration
+            self._load_basic_configs(agent_dict)
             
-            twitter_config = next((config for config in agent_dict["config"] if config["name"] == "twitter"), None)
+            # Load task-specific configuration
+            self._setup_task_configs(agent_dict)
             
-            if has_twitter_tasks and twitter_config:
-                self.tweet_interval = twitter_config.get("tweet_interval", 900)
-                self.own_tweet_replies_count = twitter_config.get("own_tweet_replies_count", 2)
+            self.config_dict = agent_dict["config"]
 
-            # Extract Echochambers config
-            echochambers_config = next((config for config in agent_dict["config"] if config["name"] == "echochambers"), None)
+        except KeyError as e:
+            raise KeyError(f"Missing required field in agent configuration: {e}")
+        except Exception as e:
+            raise Exception(f"Error setting up agent configs: {e}")
+        
+    def _load_basic_configs(self, agent_dict: dict):
+        
+        REQUIRED_FIELDS = ["name", "bio", "traits", "examples", "loop_delay", "config", "tasks"]
+
+        missing_fields = [field for field in REQUIRED_FIELDS if field not in agent_dict]
+
+        if missing_fields:
+            raise KeyError(f"Missing required fields: {', '.join(missing_fields)}")
+        
+        self.name = agent_dict["name"]
+        self.bio = agent_dict["bio"]
+        self.traits = agent_dict["traits"]
+        self.examples = agent_dict["examples"]
+        self.example_accounts = agent_dict.get("example_accounts", None)
+        self.loop_delay = agent_dict["loop_delay"]
+    
+    def _setup_task_configs(self, agent_dict: dict):
+        try:
+            # Tasks and weights setup
+            self.tasks = agent_dict.get("tasks", [])
+            self.task_weights = [task.get("weight", 0) for task in self.tasks]
+            
+            # Dice-roll mode settings
+            self.use_time_based_weights = agent_dict.get("use_time_based_weights", False)
+            self.time_based_multipliers = agent_dict.get("time_based_multipliers", {})
+            
+            # Check for task-specific configs
+            configs = agent_dict["config"]
+            
+            # Twitter config
+            has_twitter_tasks = any("tweet" in task["name"] for task in self.tasks)
+            if has_twitter_tasks:
+                twitter_config = next((config for config in configs if config["name"] == "twitter"), None)
+                if twitter_config:
+                    self.tweet_interval = twitter_config.get("tweet_interval", 900)
+                    self.own_tweet_replies_count = twitter_config.get("own_tweet_replies_count", 2)
+            
+            # Echochambers config
+            echochambers_config = next((config for config in configs if config["name"] == "echochambers"), None)
             if echochambers_config:
                 self.echochambers_message_interval = echochambers_config.get("message_interval", 60)
                 self.echochambers_history_count = echochambers_config.get("history_read_count", 50)
 
-            self.is_llm_set = False
-
-            # Cache for system prompt
-            self._system_prompt = None
-
-            # Extract loop tasks
-            self.tasks = agent_dict.get("tasks", [])
-            self.task_weights = [task.get("weight", 0) for task in self.tasks]
-            self.logger = logging.getLogger("agent")
-
-            # Set up empty agent context
-            self.context = {}
-
         except Exception as e:
-            logger.error("Could not load ZerePy agent")
-            raise e
-
-    def _setup_llm_provider(self):
-        # Get first available LLM provider and its model
+            raise Exception(f"Error setting up task configs: {e}")    
+        
+    def _setup_llm_provider(self) -> dict:
         llm_providers = self.connection_manager.get_model_providers()
         if not llm_providers:
             raise ValueError("No configured LLM provider found")
-        self.model_provider = llm_providers[0]
+        
+        provider = llm_providers[0]
+        
+        # Get provider's default model
+        model_config = next(
+            (config for config in self.config_dict if config["name"] == provider),
+            None
+        )
+        
+        if not model_config:
+            raise ValueError(f"No configuration found for provider: {provider}")
+        
+        return {
+            'provider': provider,
+            'model': model_config.get("model", "default"),
+            'system_prompt': self._construct_system_prompt()
+        }
 
-        # Load Twitter username for self-reply detection if Twitter tasks exist
-        if any("tweet" in task["name"] for task in self.tasks):
-            load_dotenv()
-            self.username = os.getenv('TWITTER_USERNAME', '').lower()
-            if not self.username:
-                logger.warning("Twitter username not found, some Twitter functionalities may be limited")
+    def _setup_agent(self,run_mode: RunMode):
+        self.llm_config = self._setup_llm_provider()
+        if (run_mode != RunMode.DICE_ROLL):
+            print("Setting up Langchain Agent")
+            self.driver_llm = LangGraphAgent(self.agent_name, False, self.connection_manager)
+            self.character_llm = LangGraphAgent(self.agent_name, False, self.connection_manager)
+            self.executor_agent = LangGraphAgent(self.agent_name, True, self.connection_manager)
+
 
     def _construct_system_prompt(self) -> str:
         """Construct the system prompt from agent configuration"""
-        if self._system_prompt is None:
-            prompt_parts = []
-            prompt_parts.extend(self.bio)
+        prompt_parts = []
+        prompt_parts.extend(self.bio)
 
-            if self.traits:
-                prompt_parts.append("\nYour key traits are:")
-                prompt_parts.extend(f"- {trait}" for trait in self.traits)
+        if self.traits:
+            prompt_parts.append("\nYour key traits are:")
+            prompt_parts.extend(f"- {trait}" for trait in self.traits)
 
-            if self.examples or self.example_accounts:
-                prompt_parts.append("\nHere are some examples of your style (Please avoid repeating any of these):")
-                if self.examples:
-                    prompt_parts.extend(f"- {example}" for example in self.examples)
+        if self.examples or self.example_accounts:
+            prompt_parts.append("\nHere are some examples of your style (Please avoid repeating any of these):")
+            if self.examples:
+                prompt_parts.extend(f"- {example}" for example in self.examples)
 
-                if self.example_accounts:
-                    for example_account in self.example_accounts:
-                        tweets = self.connection_manager.perform_action(
-                            connection_name="twitter",
-                            action_name="get-latest-tweets",
-                            params=[example_account]
-                        )
-                        if tweets:
-                            prompt_parts.extend(f"- {tweet['text']}" for tweet in tweets)
+            if self.example_accounts:
+                for example_account in self.example_accounts:
+                    tweets = self.connection_manager.perform_action(
+                        connection_name="twitter",
+                        action_name="get-latest-tweets-from-user",
+                        params=[example_account]
+                    )
+                    if tweets:
+                        prompt_parts.extend(f"- {tweet['text']}" for tweet in tweets)
 
-            self._system_prompt = "\n".join(prompt_parts)
+        system_prompt = "\n".join(prompt_parts)
+        return system_prompt
 
-        return self._system_prompt
+        
+    def prompt_llm(self, prompt: str) -> str:
+        """Generate text using the configured LLM provider"""
+        system_prompt = self.llm_config['system_prompt']
+
+        return self.connection_manager.perform_action(
+            connection_name=self.llm_config['provider'],
+            action_name="generate-text",
+            params=[prompt, system_prompt]
+        )
+
+    def perform_action(self, connection: str, action: str, **kwargs) -> None:
+        return self.connection_manager.perform_action(connection, action, **kwargs)
+    
+    def _select_action(self, use_time_based_weights: bool = False) -> dict:
+        task_weights = [weight for weight in self.task_weights.copy()]
+        
+        if use_time_based_weights:
+            current_hour = datetime.now().hour
+            task_weights = self._adjust_weights_for_time(current_hour, task_weights)
+        
+        return random.choices(self.tasks, weights=task_weights, k=1)[0]
     
     def _adjust_weights_for_time(self, current_hour: int, task_weights: list) -> list:
         weights = task_weights.copy()
@@ -134,83 +243,159 @@ class ZerePyAgent:
             ]
         
         return weights
+     
+    def _replenish_inputs(self):
+        try:
+            if "timeline_tweets" not in self.context or self.context["timeline_tweets"] is None or len(self.context["timeline_tweets"]) == 0:
+                if any("tweet" in task["name"] for task in self.tasks):
+                    self.logger.info("\n👀 READING TIMELINE")
+                    self.context["timeline_tweets"] = self.connection_manager.perform_action(
+                        connection_name="twitter",
+                        action_name="read-timeline",
+                        params=[]
+                    )
 
-    def prompt_llm(self, prompt: str, system_prompt: str = None) -> str:
-        """Generate text using the configured LLM provider"""
-        system_prompt = system_prompt or self._construct_system_prompt()
-
-        return self.connection_manager.perform_action(
-            connection_name=self.model_provider,
-            action_name="generate-text",
-            params=[prompt, system_prompt]
-        )
+                if "room_info" not in self.context or self.context["room_info"] is None:
+                    if any("echochambers" in task["name"] for task in self.tasks):
+                        self.logger.info("\n👀 READING ECHOCHAMBERS ROOM INFO")
+                        self.context["room_info"] = self.connection_manager.perform_action(
+                            connection_name="echochambers",
+                            action_name="get-room-info",
+                            params={}
+                        )
+        
+        except Exception as e:
+            self.logger.error(f"Error replenishing inputs: {e}")
     
-    def select_action(self, use_time_based_weights: bool = False) -> dict:
-        task_weights = [weight for weight in self.task_weights.copy()]
-        
-        if use_time_based_weights:
-            current_hour = datetime.now().hour
-            task_weights = self._adjust_weights_for_time(current_hour, task_weights)
-        
-        return random.choices(self.tasks, weights=task_weights, k=1)[0]
 
-    def loop(self):
-        """Main agent loop for autonomous behavior"""
-        if not self.is_llm_set:
-            self._setup_llm_provider()
+    def observation_step(self, state: AgentState):
+        print("\n=== OBSERVATION STEP ===")
+        print(f"Current Context: {state['context']}")
 
-        logger.info("\n🚀 Starting agent loop...")
-        logger.info("Press Ctrl+C at any time to stop the loop.")
+        # Replenish inputs
+        self._replenish_inputs()
+
+        #update AgentState context 
+        state["context"] = self.context
+                
+        # TODO: USE LLM TO SUMMARIZE CONTEXT IF NOT ON DICE_ROLL MODE
+        context_summary = "There is currently no additional context available."
+
+        return {"context_summary": context_summary}
+
+    def determination_step(self, state: AgentState):
+        print("\n=== DETERMINATION STEP ===")
+
+        task = state['current_task']
+
+        if (state['run_mode'] == RunMode.DICE_ROLL):
+            action = self._select_action(use_time_based_weights=self.use_time_based_weights)
+            task = action["name"]
+        elif (task is None):
+            print(f"Determining task from context: {state['context_summary']}")
+            determination_prompt = DETERMINATION_PROMPT.format(context_summary=state['context_summary'], connection_action_list="\n\n".join(connection.__str__() for connection in self.connections.values()))
+            task = self.character_llm.invoke(determination_prompt).content
+
+
+        print(f"Determined task: {task}")
+        return {"current_task": task}
+
+    def division_step(self, state: AgentState):
+
+        if (state['run_mode'] == RunMode.DICE_ROLL):
+            return state #skip division, pass task state into execution
+
+        print("\n=== DIVISION STEP ===")
+        print(f"Creating action plan for task: {state['current_task']}")
+        division_prompt = DIVISION_PROMPT.format(current_task=state['current_task'], connection_action_list="\n\n".join(connection.__str__() for connection in self.connections.values()),  preferred_llm_config=str(self.llm_config))
+        action_plan_text = self.driver_llm.invoke(division_prompt).content
+        action_plan = action_plan_text.split("\n")
+        print(f"Generated action plan: {action_plan}")
+
+
+        return {"action_plan": action_plan}
+
+    def execution_step(self, state: AgentState) -> AgentState:
+        print("\n=== EXECUTION STEP ===")
+
+        if (state['run_mode'] == RunMode.DICE_ROLL):
+            success = execute_action(self, state['current_task'])
+            state['action_log'].append({"action": state['current_task'], "result": success})
+            return state
+
+        print(f"Current action plan: {state['action_plan']}")
+        action_plan = state["action_plan"]
+
+        if not action_plan:
+            print("No actions to execute")
+            return 
+
+        for action in action_plan:
+            print(f"\nExecuting action: {action}")
+            execution_prompt = EXECUTION_PROMPT.format(action_log=state["action_log"], action=action)
+            response = self.executor_agent.invoke(execution_prompt)
+            state = self.executor_agent.process_response(response, state)
+        
+        return {"action_log": state["action_log"]}
+
+    def evaluation_step(self, state: AgentState): #Convert action_logs to a summary of what the agent did, and then pass it to task_log
+        print("\n=== EVALUATION STEP ===")
+
+        if (state['run_mode'] != RunMode.DICE_ROLL):
+            action_log = state["action_log"]
+            evaluation_prompt = EVALUATION_PROMPT.format(current_task=state['current_task'], action_log =  "\n".join(f"{action['action']}:\n" +f"Result: {action['result']}"for action in action_log))
+            generated_task_log = self.driver_llm.invoke(evaluation_prompt).content
+            print(f"Generated task log:\n{generated_task_log}")
+            state["action_plan"] = []
+            state["action_log"] = []
+            state["current_task"] = None
+            state["task_log"].append(generated_task_log)
+            state["task_log"] = state["task_log"][-3:]  #trim to the last 3 task logs
+        
+        return state
+
+    def route_to_end_or_loop(self, state: AgentState):
+        if (state['run_mode'] == RunMode.DICE_ROLL):
+            if (state['action_log'][0]['result']):
+                self.logger.info(f"\n⏳ Waiting {self.loop_delay} seconds before next loop...")
+                time.sleep(self.loop_delay)
+            else:
+                self.logger.info(f"\n⏳ Tasked failed, delaying 60 seconds to retry...")
+                time.sleep(60)
+            print_h_bar()
+            return "loop"
+        elif (state['run_mode'] == RunMode.CHAT):
+            return END
+        elif (state['run_mode'] == RunMode.AUTONOMOUS):
+            print_h_bar()
+            self.logger.info(f"\n⏳ Waiting {self.loop_delay} seconds before next loop...")
+            time.sleep(self.loop_delay)
+            return "loop"
+
+    def run(self, run_mode=RunMode.AUTONOMOUS, task=None):
+        # Initialize the graph
+        self.graph = self.graph_builder.compile()
+
+        initial_state = {
+            "context": {},
+            "current_task": task,
+            "context_summary": "",
+            "action_plan": [],
+            "action_log": [],
+            "task_log": [],
+            "run_mode": run_mode,
+        }
+        self.logger.info(f"\n🚀 Starting agent loop [{run_mode.value} Mode]...")
         print_h_bar()
-
         time.sleep(2)
-        logger.info("Starting loop in 5 seconds...")
+        self.logger.info("Starting loop in 5 seconds...")
         for i in range(5, 0, -1):
-            logger.info(f"{i}...")
+            self.logger.info(f"{i}...")
             time.sleep(1)
 
-        try:
-            while True:
-                success = False
-                try:
-                    # REPLENISH INPUTS
-                    # TODO: Add more inputs to complexify agent behavior
-                    if "timeline_tweets" not in self.context or self.context["timeline_tweets"] is None or len(self.context["timeline_tweets"]) == 0:
-                        if any("tweet" in task["name"] for task in self.tasks):
-                            logger.info("\n👀 READING TIMELINE")
-                            self.context["timeline_tweets"] = self.connection_manager.perform_action(
-                                connection_name="twitter",
-                                action_name="read-timeline",
-                                params=[]
-                            )
+        self._setup_agent(run_mode)
 
-                    if "room_info" not in self.context or self.context["room_info"] is None:
-                        if any("echochambers" in task["name"] for task in self.tasks):
-                            logger.info("\n👀 READING ECHOCHAMBERS ROOM INFO")
-                            self.context["room_info"] = self.connection_manager.perform_action(
-                                connection_name="echochambers",
-                                action_name="get-room-info",
-                                params={}
-                            )
+        # Run the graph
+        final_state = self.graph.invoke(initial_state)
+        return final_state
 
-                    # CHOOSE AN ACTION
-                    # TODO: Add agentic action selection
-                    
-                    action = self.select_action(use_time_based_weights=self.use_time_based_weights)
-                    action_name = action["name"]
-
-                    # PERFORM ACTION
-                    success = execute_action(self, action_name)
-
-                    logger.info(f"\n⏳ Waiting {self.loop_delay} seconds before next loop...")
-                    print_h_bar()
-                    time.sleep(self.loop_delay if success else 60)
-
-                except Exception as e:
-                    logger.error(f"\n❌ Error in agent loop iteration: {e}")
-                    logger.info(f"⏳ Waiting {self.loop_delay} seconds before retrying...")
-                    time.sleep(self.loop_delay)
-
-        except KeyboardInterrupt:
-            logger.info("\n🛑 Agent loop stopped by user.")
-            return

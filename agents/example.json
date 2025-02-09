@@ -110,5 +110,12 @@
   "time_based_multipliers": {
     "tweet_night_multiplier": 0.4,
     "engagement_day_multiplier": 1.5
+  },
+  "langchain_config": {
+    "use_langchain": false,
+    "provider": "openai", 
+    "driver_model": "gpt-4o-mini",
+    "character_model": "gpt-4o-mini",
+    "executor_model": "gpt-4o-mini"
   }
 }
