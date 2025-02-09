@@ -323,7 +323,6 @@ class ZerePyAgent:
             state['action_log'].append({"action": state['current_task'], "result": success})
             return state
 
-        print(f"Current action plan: {state['action_plan']}")
         action_plan = state["action_plan"]
 
         if not action_plan:

@@ -415,7 +415,7 @@ class ZerePyCLI:
             if (mode_to_run.lower() == 'a'):
                 logger.info(f"Running graph agent for agent [Autonomous]: {self.agent.name}")
                 task_to_perform = input("\n🔹 Enter the task to perform (e.g., 'Read the timeline, then write a tweet about it').\n"
-                                        "🔹 Or simply press Enter to let the agent decide its own task in a loop.\n\n➡️ Your task: "
+                                        "🔹 Or simply press Enter to let the agent autonomously decide its own tasks and plans in a loop.\n\n➡️ Your task: "
                 )
                 if (task_to_perform == ""):
                     task_to_perform = None
