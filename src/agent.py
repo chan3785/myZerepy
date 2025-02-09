@@ -270,7 +270,6 @@ class ZerePyAgent:
 
     def observation_step(self, state: AgentState):
         print("\n=== OBSERVATION STEP ===")
-        print(f"Current Context: {state['context']}")
 
         # Replenish inputs
         self._replenish_inputs()
@@ -281,6 +280,8 @@ class ZerePyAgent:
         # TODO: USE LLM TO SUMMARIZE CONTEXT IF NOT ON DICE_ROLL MODE
         context_summary = "There is currently no additional context available."
 
+        print(f"Current Context: {state['context']}")
+        
         return {"context_summary": context_summary}
 
     def determination_step(self, state: AgentState):
