@@ -409,8 +409,10 @@ class ZerePyCLI:
             return
 
         try:
-            #Agent mode to run 
-            mode_to_run = input("Run the agent in Autonomous mode or Dice roll mode? (a/d): ")
+            mode_to_run = input("Choose a mode to run\n\n"
+                                "🤖 Autonomous mode: The agent will autonomously decide its own goals, tasks and plans in a loop.\n"
+                                "🎲 Dice roll mode: Zerepy's default mode where the agent randomly selects a task from your config to perform.\n\n"
+                                "Enter 'a' for Autonomous mode or 'd' for Dice roll mode: ")
 
             if (mode_to_run.lower() == 'a'):
                 logger.info(f"Running graph agent for agent [Autonomous]: {self.agent.name}")
