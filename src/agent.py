@@ -99,7 +99,9 @@ class ZerePyAgent:
         
     def _load_basic_configs(self, agent_dict: dict):
         
-        REQUIRED_FIELDS = ["name", "bio", "traits", "examples", "loop_delay", "config", "tasks"]
+        REQUIRED_FIELDS = ["name", "bio", "traits", "examples", "loop_delay", "config"]
+
+        #TODO : "tasks" is a required field only for dice-roll mode
 
         missing_fields = [field for field in REQUIRED_FIELDS if field not in agent_dict]
 
@@ -320,7 +322,7 @@ class ZerePyAgent:
 
         print("\n=== DIVISION STEP ===")
         print(f"Creating action plan for task: {state['current_task']}")
-        division_prompt = DIVISION_PROMPT.format(current_task=state['current_task'], connection_action_list="\n\n".join(connection.__str__() for connection in self.connections.values()),  preferred_llm_config=str(self.llm_config))
+        division_prompt = DIVISION_PROMPT.format(current_task=state['current_task'], connection_action_list="\n\n".join(connection.__str__() for connection in self.connections.values()))
         action_plan_text = self.driver_llm.invoke(division_prompt).content
         action_plan = action_plan_text.split("\n")
         print(f"Generated action plan: {action_plan}")
@@ -344,7 +346,7 @@ class ZerePyAgent:
 
         for action in action_plan:
             print(f"\nExecuting action: {action}")
-            execution_prompt = EXECUTION_PROMPT.format(action_log=state["action_log"], action=action)
+            execution_prompt = EXECUTION_PROMPT.format(action_log=state["action_log"],  preferred_llm_config=str(self.llm_config), action=action)
             response = self.executor_agent.invoke(execution_prompt)
             state = self.executor_agent.process_response(response, state)
         

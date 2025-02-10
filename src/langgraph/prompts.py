@@ -19,17 +19,11 @@ DIVISION_PROMPT = """Based on the given task and available actions, generate an 
                     AVAILABLE ACTIONS FOR EACH CONNECTION:
                     {connection_action_list}
 
-                    IMPORTANT: When generating text using an LLM, you MUST use the exact configuration provided below for the `generate-text` action. Copy the entire configuration, including the complete system prompt:
-
-                    LLM Configuration:
-                    {preferred_llm_config}
-
                     Example :
                     TASK: Create a funny tweet and post it on Twitter
-                    LLM Configuration: {{'provider': 'openai', 'model': 'gpt-3.5', 'system_prompt': 'Your key traits are: - Funny - Witty - Engaging\nHere are some examples of your style (Please avoid repeating any of these): - Joke 1 - Joke 2 - Joke 3'}}
 
                     Output: 
-                    1. Generate text using openai `generate-text` with model : gpt-3.5 , system prompt: 'Your key traits are: - Funny - Witty - Engaging\nHere are some examples of your style (Please avoid repeating any of these): - Joke 1 - Joke 2 - Joke 3'
+                    1. Generate text using openai `generate-text` with the prompt "Create a funny tweet" and the specified system prompt
                     2. Post the generated text using `post-tweet` with the output from step 1
 
                     Rules:
@@ -41,6 +35,9 @@ DIVISION_PROMPT = """Based on the given task and available actions, generate an 
 
 EXECUTION_PROMPT =  ("Before executing the following action, consider the previous action log:\n\n"
                     "ACTION LOG:\n{action_log}\n\n"
+                    "Here is your preffered configurations for LLM related actions:\n\n"
+                    "LLM Configuration:\n{preferred_llm_config}\n\n"
+                    "Make sure to use the exact configuration provided above for the `generate-text` action. Copy the entire configuration, including the complete system prompt.\n\n"
                     "Refer to the 'final_response' field in the tool action log to quickly see the final response from the agent\n\n"
                      "Now, execute this action based on the prior results: {action}")
 

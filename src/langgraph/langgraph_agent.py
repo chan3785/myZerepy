@@ -21,7 +21,7 @@ class LangGraphAgent:
         agent_dict = json.load(open(agent_path, "r", encoding="utf-8"))
 
         if "langchain_config" not in agent_dict or not agent_dict["langchain_config"].get("use_langchain", False):
-            raise ValueError("You must have a langchain_config configuration in your agent file to use LangGraphAgent")
+            raise ValueError("You must have a langchain_config configuration in your agent file or must have it enabled to use LangGraphAgent")
 
         if "config" not in agent_dict:
             raise KeyError("Missing required fields: config")
