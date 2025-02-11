@@ -30,7 +30,6 @@ DIVISION_PROMPT = """Based on the given task and available actions, generate an 
                     - Do not combine multiple actions into one step
                     - Do not escape to a new line for a single step, until the step is complete
                     - Each step should represent a single action
-                    - When using `generate-text`, include the complete system prompt from the LLM configuration
                     - Be explicit about which parameters are required for each action"""
 
 EXECUTION_PROMPT =  ("Before executing the following action, consider the previous action log:\n\n"
