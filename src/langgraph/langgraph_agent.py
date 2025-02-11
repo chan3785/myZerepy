@@ -2,59 +2,43 @@ import os
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
-from typing_extensions import TypedDict
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.prebuilt import ToolExecutor, create_react_agent
-from pathlib import Path
 import json
+from src.connection_manager import ConnectionManager
+
 
 class LangGraphAgent:
-    def __init__(self, agent_name: str, provide_tools: bool, connection_manager=None):
+    def __init__(self, model_provider: str, model: str, bind_tools: bool, connection_manager: ConnectionManager=None):
+        self.model_provider = model_provider
+        self.model = model
+        self.bind_tools = bind_tools
         self.connection_manager = connection_manager
-        self.provideTools = provide_tools
-        self._load_agent_config(agent_name)
         self._load_environment_variables()
-        self.langgraphAgent = self._setup_langgraph_agent()
 
-    def _load_agent_config(self, agent_name: str):
-        agent_path = Path("agents") / f"{agent_name}.json"
-        agent_dict = json.load(open(agent_path, "r", encoding="utf-8"))
-
-        if "langchain_config" not in agent_dict or not agent_dict["langchain_config"].get("use_langchain", False):
-            raise ValueError("You must have a langchain_config configuration in your agent file or must have it enabled to use LangGraphAgent")
-
-        if "config" not in agent_dict:
-            raise KeyError("Missing required fields: config")
-
-        self.langchainConfig = agent_dict["langchain_config"]
+        # Create LangGraph agent
+        if bind_tools:
+            if self.model_provider == "openai":
+                model = ChatOpenAI(model=self.model, temperature=0.7, openai_api_key=self.api_key)
+            else:
+                model = ChatAnthropic(model=self.model ,temperature=0.7,api_key=self.api_key)
+            tools = self._collect_tools_from_connections()
+            tool_executor = ToolExecutor(tools)
+            self.langgraphAgent =  create_react_agent(model, tool_executor.tools)
+        else:
+            if self.model_provider == "openai":
+                self.langgraphAgent =  ChatOpenAI(model=self.model, api_key=self.api_key)
+            else:
+                self.langgraphAgent =  ChatAnthropic(model=self.model, api_key=self.api_key)
 
     def _load_environment_variables(self):
         load_dotenv()
-        if (self.langchainConfig["provider"] == "openai"):
+        if self.model_provider == "openai":
             self.api_key = os.getenv("OPENAI_API_KEY")
         else:
             self.api_key = os.getenv("ANTHROPIC_API_KEY")
         if not self.api_key:
             raise ValueError("API key not found in environment variables")
-
-    def _setup_langgraph_agent(self):
-        if self.provideTools:
-            return self._setup_agent_with_tools()
-        return self._setup_agent_without_tools()
-
-    def _setup_agent_with_tools(self):
-        if (self.langchainConfig["provider"] == "openai"):
-            model = ChatOpenAI(model=self.langchainConfig["executor_model"], temperature=0.7, openai_api_key=self.api_key)
-        else:
-            model = ChatAnthropic(model=self.langchainConfig["executor_model"] ,temperature=0.7,api_key=self.api_key)
-        tools = self._collect_tools_from_connections()
-        tool_executor = ToolExecutor(tools)
-        return create_react_agent(model, tool_executor.tools)
-
-    def _setup_agent_without_tools(self):
-        if (self.langchainConfig["provider"] == "openai"):
-            return ChatOpenAI(model=self.langchainConfig["driver_model"], api_key=self.api_key)
-        return ChatAnthropic(model=self.langchainConfig["driver_model"], api_key=self.api_key)
 
     def _collect_tools_from_connections(self):
         tools = []
@@ -67,7 +51,7 @@ class LangGraphAgent:
         return tools
 
     def invoke(self, user_input: str):
-        if self.provideTools:
+        if self.bind_tools:
             formatted_input = {"messages": [ {"role": "user","content": user_input}]}
             return self.langgraphAgent.invoke(formatted_input)
         else:
@@ -83,7 +67,6 @@ class LangGraphAgent:
         return response
 
     def process_response(self, response, state):
-
         messages = response.get("messages", [])
         last_tool_execution = None
         final_response = None

@@ -35,11 +35,11 @@ DIVISION_PROMPT = """Based on the given task and available actions, generate an 
 
 EXECUTION_PROMPT =  ("Before executing the following action, consider the previous action log:\n\n"
                     "ACTION LOG:\n{action_log}\n\n"
-                    "Here is your preffered configurations for LLM related actions:\n\n"
+                    "Here is your preferred configurations for LLM related actions:\n\n"
                     "LLM Configuration:\n{preferred_llm_config}\n\n"
                     "Make sure to use the exact configuration provided above for the `generate-text` action. Copy the entire configuration, including the complete system prompt.\n\n"
                     "Refer to the 'final_response' field in the tool action log to quickly see the final response from the agent\n\n"
-                     "Now, execute this action based on the prior results: {action}")
+                    "Now, execute this action based on the prior results: {action}")
 
 EVALUATION_PROMPT = ("Based on the action log, provide a summary of what the agent did based on the main task given. Only include the most important actions and the results of those actions. Do not include any actions that are irrelevant to the task or that did not produce a meaningful result.\n\n"
                    "Task:\n{current_task}"

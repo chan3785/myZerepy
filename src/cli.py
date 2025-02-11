@@ -10,7 +10,9 @@ from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.history import FileHistory
-from src.agent import ZerePyAgent, RunMode
+from src.agent import ZerePyAgent
+from src.legacy_agent import LegacyZerePyAgent
+from src.agent_factory import AgentFactory
 from src.helpers import print_h_bar
 from src.langgraph.langgraph_agent import LangGraphAgent
 
@@ -333,8 +335,9 @@ class ZerePyCLI:
             logger.info(f"\nNo default agent is loaded, please use the load-agent command to do that.")
 
     def _load_agent_from_file(self, agent_name):
-        try: 
-            self.agent = ZerePyAgent(agent_name)
+        try:
+            agent_path = Path("agents") / f"{agent_name}.json"
+            self.agent = AgentFactory.load_agent(agent_path)
             logger.info(f"\n✅ Successfully loaded agent: {self.agent.name}")
         except FileNotFoundError:
             logger.error(f"Agent file not found: {agent_name}")
@@ -409,25 +412,7 @@ class ZerePyCLI:
             return
 
         try:
-            #Agent mode to run 
-            mode_to_run = input("Run the agent in Autonomous mode or Dice roll mode? (a/d): ")
-
-            if (mode_to_run.lower() == 'a'):
-                logger.info(f"Running graph agent for agent [Autonomous]: {self.agent.name}")
-                task_to_perform = input("\n🔹 Enter the task to perform (e.g., 'Read the timeline, then write a tweet about it').\n"
-                                        "🔹 Or simply press Enter to let the agent autonomously decide its own tasks and plans in a loop.\n\n➡️ Your task: "
-                )
-                if (task_to_perform == ""):
-                    task_to_perform = None
-
-                print_h_bar()
-                final_state = self.agent.run(run_mode=RunMode.AUTONOMOUS,task=task_to_perform)
-                print(f"Final state: {final_state}")
-            else:
-                logger.info(f"Running graph agent for agent [Dice-Roll]: {self.agent.name}")
-                print_h_bar()
-                self.agent.run(run_mode=RunMode.DICE_ROLL)
-               
+            self.agent.loop()
         except KeyboardInterrupt:
             logger.info("\n🛑 Agent loop stopped by user.")
         except Exception as e:
