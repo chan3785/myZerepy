@@ -8,7 +8,9 @@ DETERMINATION_PROMPT = """Based on the given context and available actions, gene
                         "CONTEXT SUMMARY:\n{context_summary}"
                         "\n\nAVAILABLE ACTIONS FOR EACH CONNECTION:\n\n" 
                         "{connection_action_list}"
-                        "Example : Create a funny tweet and post it on Twitter"""
+                        "Example Outputs:\n 
+                            1. Create a funny tweet and post it on Twitter
+                            2. Search for tweets about a specific topic and reply to them"""
 
 
 DIVISION_PROMPT = """Based on the given task and available actions, generate an action plan for the agent. Only respond with the list of steps needed (with the corresponding actions mentioned), and put each step on a new line. Only include actions that involve making requests—do not include actions like editing dialog boxes, clicking buttons, or other UI interactions.
