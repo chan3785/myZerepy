@@ -520,18 +520,13 @@ class ZerePyCLI:
             logger.info("No agent loaded. Use 'load-agent' first.")
             return
         
-        run_langchain = input("Do you want to start a Langchain session chat? (y/n): ")
 
-        if (run_langchain.lower() == 'y'):
-            #load langgraph agent 
-            self.langgraph_agent = LangGraphAgent(self.agent_file_name, True, connection_manager=self.agent.connection_manager)
-            langchain_session = True
-            messages = []
+        #load langgraph agent 
+        langgraph_agent = LangGraphAgent("openai","gpt-3.5-turbo",True,self.agent.connection_manager)
+        langchain_session = True
+        messages = []
 
-        if not self.agent.is_llm_set:
-            self.agent._setup_llm_provider()
-
-        logger.info(f"\nStarting chat with {self.agent.name} [" + ("Langchain Mode" if langchain_session else "Normal Mode") + "]")
+        logger.info(f"\nStarting chat with {self.agent.name}")
         print_h_bar()
 
         while True:
@@ -543,11 +538,8 @@ class ZerePyCLI:
 
                 messages.append({"role": "user", "content": user_input})
 
-                if (langchain_session):
-                    response = self.langgraph_agent.invoke_chat(messages)
-                    messages.append({"role": "assistant", "content": response})
-                else:
-                    response = self.agent.prompt_llm(user_input)
+                response = langgraph_agent.invoke_chat(messages)
+                messages.append({"role": "assistant", "content": response})
 
                 logger.info(f"\n{self.agent.name}: {response}")
                 print_h_bar()
