@@ -109,7 +109,7 @@ class LegacyZerePyAgent:
                     for example_account in self.example_accounts:
                         tweets = self.connection_manager.perform_action(
                             connection_name="twitter",
-                            action_name="get-latest-tweets",
+                            action_name="get-latest-tweets-from-user",
                             params=[example_account]
                         )
                         if tweets:
