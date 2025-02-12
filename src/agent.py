@@ -238,7 +238,7 @@ class ZerePyAgent:
             response = self.executor_agent.invoke(execution_prompt)
             state = self.executor_agent.process_response(response, state)
         
-        return {"action_log": state["action_log"]}
+        return state
 
     def evaluation_step(self, state: AgentState):
         #Convert action_logs to a summary of what the agent did, and then pass it to task_log
@@ -258,6 +258,24 @@ class ZerePyAgent:
         logger.info(f"\n⏳ Waiting {self.loop_delay} seconds before next loop...")
         print_h_bar()
         time.sleep(self.loop_delay)
+        return state
+    
+    def process_task(self, task: str): # Process a single task
+        state = {
+            "context": {},
+            "current_task": task,
+            "context_summary": "",
+            "action_plan": [],
+            "action_log": [],
+            "task_log": [],
+        }
+        
+        state.update(self.observation_step(state))
+        state.update(self.determination_step(state))
+        state.update(self.division_step(state))
+        state = self.execution_step(state)
+        state.update(self.evaluation_step(state))
+        
         return state
 
     def loop(self, task=None):
