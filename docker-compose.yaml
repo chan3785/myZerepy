@@ -1,0 +1,43 @@
+version: "3.8"
+services:
+  zerepy:
+    build: .
+    container_name: zerepy
+    command:
+      - /bin/sh
+      - -c
+      - |
+        cd /app
+        rm -rf agents
+        mkdir agents
+        echo "Creating agent config"
+        echo ${AGENT_CONFIG} | base64 -d > agents/${AGENT_NAME}.json
+        echo ${GENERAL_CONFIG} | base64 -d > agents/general.json
+        poetry run python main.py --server
+    environment:
+      - AGENT_NAME=${AGENT_NAME}
+      - AGENT_CONFIG=${AGENT_CONFIG}
+      - GENERAL_CONFIG=${GENERAL_CONFIG}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DSTACK_SIMULATOR_ENDPOINT=http://tappd:8090
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./.env:/app/.env:ro
+    depends_on:
+      - tappd
+    networks:
+      - zerepy-network
+
+  tappd:
+    image: phalanetwork/tappd-simulator:latest
+    container_name: tappd
+    ports:
+      - "8090:8090"
+    networks:
+      - zerepy-network
+
+networks:
+  zerepy-network:
+    driver: bridge

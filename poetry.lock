@@ -1028,6 +1028,22 @@ files = [
 ]
 
 [[package]]
+name = "dstack-sdk"
+version = "0.1.5"
+description = "DStack SDK for Python"
+optional = false
+python-versions = ">=3.10"
+files = [
+    {file = "dstack_sdk-0.1.5-py3-none-any.whl", hash = "sha256:2474283f8d5d292203febef08b568aa3581cfba2d5349eb387f97149717b1834"},
+    {file = "dstack_sdk-0.1.5.tar.gz", hash = "sha256:614069f3e85275f0d1042894314559e03d7dca95df2dba9a2a22435b4a920c4d"},
+]
+
+[package.dependencies]
+asyncio = ">=3.4.3"
+httpx = ">=0.27.2"
+pydantic = ">=2.9.2"
+
+[[package]]
 name = "eth-abi"
 version = "5.0.1"
 description = "eth_abi: Python utilities for working with Ethereum ABI definitions, especially encoding and decoding"
@@ -3982,4 +3998,4 @@ server = ["fastapi", "requests", "uvicorn"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "88cf0b32c2eeecb30f754589621bcaa38a9dbe10e25b593bb850a78926778fd6"
+content-hash = "67a420a231e1098d300e27b5416c741b55757d6e5456fed4778c6dc7457c1f27"
