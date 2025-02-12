@@ -514,7 +514,6 @@ class ZerePyCLI:
 
     def chat_session(self, input_list: List[str]) -> None:
         """Handle chat command"""
-        langchain_session = False
 
         if self.agent is None:
             logger.info("No agent loaded. Use 'load-agent' first.")
@@ -523,7 +522,6 @@ class ZerePyCLI:
 
         #load langgraph agent 
         langgraph_agent = LangGraphAgent("openai","gpt-3.5-turbo",True,self.agent.connection_manager)
-        langchain_session = True
         messages = []
 
         logger.info(f"\nStarting chat with {self.agent.name}")
