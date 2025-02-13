@@ -28,7 +28,7 @@ def migrate_old_to_new(old_json, conversion_type="legacy"):
             "model_provider": "openai",  # openai or anthropic for langchain
             "model": "gpt-4o-mini",
         }
-    elif conversion_type == "legacy":
+    else:
         new_json["config"]["time_based_multipliers"] = old_json["time_based_multipliers"]
         new_json["tasks"] = old_json.get("tasks", [])
 
