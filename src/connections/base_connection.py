@@ -84,9 +84,7 @@ class BaseConnection(ABC):
                     "required_params": all_required_params
                 }
 
-            method_name = action.name.replace('-', '_')
-            method = getattr(self, method_name)
-            return method(**tool_input)
+            return self.perform_action(action.name, kwargs=tool_input)
         
         connection_name = self.__class__.__name__.lower().replace('connection', '')
         connection_prefixed_name = f"{connection_name}_{action.name}"

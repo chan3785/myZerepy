@@ -252,14 +252,6 @@ class GoatConnection(BaseConnection):
             )
             self._action_registry[tool.name] = tool
 
-             # Create action handler function
-            def action_handler(tool_name=tool.name, **kwargs):
-                return self.perform_action(tool_name, **kwargs)
-
-             # Register the action handler as a method on the class
-            setattr(self, tool.name.replace('-', '_'), action_handler)
-
-
             register_action(tool.name)(
                 lambda agent, tool_name=tool.name, **kwargs: self.perform_action(
                     tool_name, **kwargs
@@ -406,11 +398,18 @@ class GoatConnection(BaseConnection):
             logger.error(error_msg)
             raise GoatConfigurationError(error_msg)
 
-    def perform_action(self, action_name: str, **kwargs) -> Any:
+    def perform_action(self, action_name: str, kwargs=None, **extra_kwargs) -> Any:
         """Execute a GOAT action using a plugin's tool"""
         action = self.actions.get(action_name)
         if not action:
             raise KeyError(f"Unknown action: {action_name}")
 
         tool = self._action_registry[action_name]
+        
+        # Combine kwargs dict and extra_kwargs if both are present
+        if kwargs is None:
+            kwargs = extra_kwargs
+        else:
+            kwargs.update(extra_kwargs)
+            
         return tool.execute(kwargs)
