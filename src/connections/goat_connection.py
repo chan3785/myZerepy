@@ -252,11 +252,21 @@ class GoatConnection(BaseConnection):
             )
             self._action_registry[tool.name] = tool
 
+             # Create action handler function
+            def action_handler(tool_name=tool.name, **kwargs):
+                return self.perform_action(tool_name, **kwargs)
+
+             # Register the action handler as a method on the class
+            setattr(self, tool.name.replace('-', '_'), action_handler)
+
+
             register_action(tool.name)(
                 lambda agent, tool_name=tool.name, **kwargs: self.perform_action(
                     tool_name, **kwargs
                 )
             )
+
+    
         self.tool_executor = ToolExecutor(
             [self._create_tool(action) for action in self.actions.values()]
         )
