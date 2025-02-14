@@ -130,6 +130,9 @@ class ZerePyAgent:
             raise KeyError(f"Missing required field in agent configuration: {e}")
         except Exception as e:
             raise Exception(f"Error setting up agent configs: {e}")
+        
+    def perform_action(self, connection: str, action: str, **kwargs) -> None:
+        return self.connection_manager.perform_action(connection, action, **kwargs)
 
     def _construct_system_prompt(self) -> str:
         """Construct the system prompt from agent configuration"""

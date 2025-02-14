@@ -10,6 +10,7 @@ from dotenv import set_key, load_dotenv
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
 from src.helpers import print_h_bar
 from src.action_handler import register_action
+from src.connections.base_connection import ToolExecutor
 from goat import PluginBase, ToolBase, WalletClientBase, get_tools
 from goat_wallets.web3 import Web3EVMWalletClient
 
@@ -31,11 +32,12 @@ class GoatConfigurationError(GoatConnectionError):
 class GoatConnection(BaseConnection):
     def __init__(self, config: Dict[str, Any]):
         logger.info("🐐 Initializing Goat connection...")
-        super().__init__(config)
         self._is_configured = False
         self._wallet_client: WalletClientBase | None = None
         self._plugins: Dict[str, PluginBase] = {}
         self._action_registry: Dict[str, ToolBase] = {}
+        
+        super().__init__(config)
         self._config = self.validate_config(
             config
         )  # Store config but don't register actions yet
@@ -255,6 +257,9 @@ class GoatConnection(BaseConnection):
                     tool_name, **kwargs
                 )
             )
+        self.tool_executor = ToolExecutor(
+            [self._create_tool(action) for action in self.actions.values()]
+        )
 
     def register_actions(self) -> None:
         """Initial action registration - deferred until wallet is configured"""
@@ -275,7 +280,6 @@ class GoatConnection(BaseConnection):
             if not w3.is_connected():
                 logger.error("Failed to connect to RPC provider")
                 return False
-
             # Test private key by creating account
             try:
                 account = Account.from_key(private_key)

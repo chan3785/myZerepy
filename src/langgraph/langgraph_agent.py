@@ -41,6 +41,7 @@ class LangGraphAgent:
             raise ValueError("API key not found in environment variables")
 
     def _collect_tools_from_connections(self):
+        self.connection_manager.refresh_connections() 
         tools = []
         for connection_name in self.connection_manager.get_connections():
             connection = self.connection_manager.get_connection(connection_name)
