@@ -52,7 +52,7 @@ class TwitterConnection(BaseConnection):
                 name="get-latest-tweets-from-user",
                 parameters=[
                     ActionParameter("username", True, str, "Twitter username to get tweets from"),
-                    ActionParameter("count", False, int, "Number of tweets to retrieve")
+                    ActionParameter("count", False, int, "Number of tweets to retrieve (10-100)")
                 ],
                 description="Get the latest tweets by a specific user"
             ),
