@@ -59,7 +59,7 @@ class TwitterConnection(BaseConnection):
             "post-tweet": Action(
                 name="post-tweet",
                 parameters=[
-                    ActionParameter("message", True, str, "Text content of the tweet")
+                    ActionParameter("message", True, str, "Text content of the tweet (280 characters max)")
                 ],
                 description="Post a new tweet"
             ),
