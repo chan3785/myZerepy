@@ -125,6 +125,7 @@ class ZerePyAgent:
             # TASK CONFIGS
             self.tasks = agent_config.get("tasks", [])
             self.task_weights = [task.get("weight", 0) for task in self.tasks]
+            self.loop_task = False
 
         except KeyError as e:
             raise KeyError(f"Missing required field in agent configuration: {e}")
@@ -253,7 +254,7 @@ class ZerePyAgent:
         print(f"Generated task log:\n{generated_task_log}")
         state["action_plan"] = []
         state["action_log"] = []
-        state["current_task"] = None
+        state["current_task"] = state["current_task"] if self.loop_task else None
         state["task_log"].append(generated_task_log)
         state["task_log"] = state["task_log"][-3:]  #trim to the last 3 task logs
 
@@ -290,6 +291,9 @@ class ZerePyAgent:
         task_to_perform = input("\n🔹 Enter the first task to perform (e.g., 'Read the timeline, then write a tweet about it').\n"
                                 "🔹 Or simply press Enter to let the agent autonomously decide its own tasks and plans in a loop.\n\n➡️ YOUR TASK: "
                                 )
+        loop_task = input("\n🔄 Would you like to repeat this task in every loop? \n"
+                  "Enter 'y' for yes, or 'n' to let the agent generate new tasks dynamically in each loop.\n\n➡️ YOUR CHOICE: ")
+        self.loop_task = True if loop_task.lower() == "y" else False
 
         initial_state = {
             "context": {},

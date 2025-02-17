@@ -25,21 +25,20 @@ DIVISION_PROMPT = """Based on the given task and available actions, generate an 
                     TASK: Create a funny tweet and post it on Twitter
 
                     Output: 
-                    1. Generate text using openai `generate-text` with the prompt "Create a funny tweet, keep it under 280 characters" and the specified system prompt
+                    1. Generate text using openai `generate-text` with the prompt "Create a funny tweet" and the specified system prompt
                     2. Post the generated text using `post-tweet` with the output from step 1 as the 'message' parameter
 
                     Rules:
                     - Do not combine multiple actions into one step
                     - Do not escape to a new line for a single step, until the step is complete
                     - Each step should represent a single action
-                    - Be explicit about which parameters are required for each action
-                    - When using the `generate-text` action for tweets, make sure to keep the character limit under 280 characters"""
+                    - Be explicit about which parameters are required for each action"""
 
 EXECUTION_PROMPT =  ("Before executing the following action, consider the previous action log:\n\n"
                     "ACTION LOG:\n{action_log}\n\n"
                     "Here is your preferred configurations for LLM related actions:\n\n"
                     "LLM Configuration:\n{preferred_llm_config}\n\n"
-                    "Make sure to use the exact configuration provided above for the `generate-text` action. Copy the entire configuration, including the complete system prompt.\n\n"
+                    "Make sure to use the exact configuration provided above for the `generate-text` action. Copy the entire configuration, including the complete system prompt.When used to create a text for a tweet, always specify it under 280 characters in the prompt\n\n"
                     "Refer to the 'final_response' field in the tool action log to quickly see the final response from the agent\n\n"
                     "Now, execute this action based on the prior results: {action}")
 
