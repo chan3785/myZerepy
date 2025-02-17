@@ -25,7 +25,7 @@ DIVISION_PROMPT = """Based on the given task and available actions, generate an 
                     TASK: Create a funny tweet and post it on Twitter
 
                     Output: 
-                    1. Generate text using openai `generate-text` with the prompt "Create a funny tweet" and the specified system prompt
+                    1. Generate text using openai `generate-text` with the prompt "Create a funny tweet, keep it under 280 characters" and the specified system prompt
                     2. Post the generated text using `post-tweet` with the output from step 1 as the 'message' parameter
 
                     Rules:
