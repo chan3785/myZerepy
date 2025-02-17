@@ -26,13 +26,14 @@ DIVISION_PROMPT = """Based on the given task and available actions, generate an 
 
                     Output: 
                     1. Generate text using openai `generate-text` with the prompt "Create a funny tweet" and the specified system prompt
-                    2. Post the generated text using `post-tweet` with the output from step 1
+                    2. Post the generated text using `post-tweet` with the output from step 1 as the 'message' parameter
 
                     Rules:
                     - Do not combine multiple actions into one step
                     - Do not escape to a new line for a single step, until the step is complete
                     - Each step should represent a single action
-                    - Be explicit about which parameters are required for each action"""
+                    - Be explicit about which parameters are required for each action
+                    - When using the `generate-text` action for tweets, make sure to keep the character limit under 280 characters"""
 
 EXECUTION_PROMPT =  ("Before executing the following action, consider the previous action log:\n\n"
                     "ACTION LOG:\n{action_log}\n\n"
