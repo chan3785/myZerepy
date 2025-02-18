@@ -7,17 +7,18 @@ import asyncio
 import signal
 import json
 import threading
+import hashlib
 import os
 import uuid
 from pathlib import Path
 from web3 import Web3
 from dotenv import load_dotenv
 from dstack_sdk import AsyncTappdClient, DeriveKeyResponse, TdxQuoteResponse
-
+# from solders.keypair import Keypair
 from src.cli import ZerePyCLI
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("server/app")
 
 # Load environment variables
@@ -163,33 +164,95 @@ class ZerePyServer:
                 logger.error(f"Error loading config: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
 
-        @self.app.get("/derivekey")
-        async def derivekey():
-            """Get or generate wallet key pair for the current agent"""
+        @self.app.get("/derivekey/evm")
+        async def derive_evm_key():
+            """Get EVM keypair for the current agent"""
             if not self.state.cli.agent:
                 raise HTTPException(status_code=400, detail="No agent loaded. Use /agents/{name}/load first")
             
             try:
-                if pubkey_exists():
-                    return {"pubkey": os.getenv("GOAT_WALLET_PUBKEY")}
-
-                logger.info(f"dstack endpoint: {DSTACK_SIMULATOR_ENDPOINT}")
                 client = AsyncTappdClient(DSTACK_SIMULATOR_ENDPOINT)
                 random_path = f"/{str(uuid.uuid4())}"
-                subject = f"{self.state.cli.agent.name}_v0.1.0"  # Include agent name in subject
+                subject = f"{self.state.cli.agent.name}_evm_v0.1.0"
                 deriveKey = await client.derive_key(random_path, subject)
 
                 assert isinstance(deriveKey, DeriveKeyResponse)
-                asBytes = deriveKey.toBytes()
+                key_bytes = deriveKey.toBytes()
+                
+                # Calculate keccak256 hash for EVM key
+                web3 = Web3()
+                private_key = web3.keccak(key_bytes).hex()
+                account = web3.eth.account.from_key(private_key)
+                
+                return {
+                    "address": account.address,
+                    "privateKey": private_key
+                }
+            except Exception as e:
+                logger.error(f"Error in derivekey/evm: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
 
+        @self.app.get("/derivekey/solana")
+        async def derive_solana_key():
+            """Get Solana keypair for the current agent"""
+            if not self.state.cli.agent:
+                raise HTTPException(status_code=400, detail="No agent loaded. Use /agents/{name}/load first")
+            
+            try:
+                client = AsyncTappdClient(DSTACK_SIMULATOR_ENDPOINT)
+                random_path = f"/{str(uuid.uuid4())}"
+                subject = f"{self.state.cli.agent.name}_solana_v0.1.0"
+                deriveKey = await client.derive_key(random_path, subject)
+
+                assert isinstance(deriveKey, DeriveKeyResponse)
+                key_bytes = deriveKey.toBytes()
+                
+                # Calculate SHA256 hash for private key
+                hash_obj = hashlib.sha256()
+                hash_obj.update(key_bytes)
+                private_key = hash_obj.digest()
+                
+                return {
+                    "privateKey": private_key.hex(),
+                    "publicKey": Web3.keccak(private_key).hex()  # Using keccak for public key derivation
+                }
+            except Exception as e:
+                logger.error(f"Error in derivekey/solana: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.post("/test/new-keys")
+        async def generate_new_keys():
+            """Test endpoint to force generation of new keys"""
+            if not self.state.cli.agent:
+                raise HTTPException(status_code=400, detail="No agent loaded. Use /agents/{name}/load first")
+            
+            try:
+                # Clear existing keys
+                os.environ["GOAT_WALLET_PRIVATE_KEY"] = ""
+                os.environ["GOAT_WALLET_PUBKEY"] = ""
+                
+                # Generate new keys using existing derive key logic
+                client = AsyncTappdClient(DSTACK_SIMULATOR_ENDPOINT)
+                random_path = f"/{str(uuid.uuid4())}"
+                subject = f"{self.state.cli.agent.name}_v0.1.0"
+                deriveKey = await client.derive_key(random_path, subject)
+                
+                assert isinstance(deriveKey, DeriveKeyResponse)
+                asBytes = deriveKey.toBytes()
+                
                 keccak_private_key_bytes = Web3().keccak(asBytes)
                 keccak_private_key_string = keccak_private_key_bytes.hex().replace("0x", "")
-
+                
                 set_private_key(keccak_private_key_string)
-                return {"pubkey": os.getenv("GOAT_WALLET_PUBKEY")}
+                return {
+                    "status": "success",
+                    "new_pubkey": os.getenv("GOAT_WALLET_PUBKEY"),
+                    "message": "New keys generated successfully"
+                }
             except Exception as e:
-                logger.error(f"Error in derivekey: {e}")
+                logger.error(f"Error generating new keys: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
+
 
         @self.app.post("/tdxquote")
         async def tdxquote(request: TdxQuoteRequest):
