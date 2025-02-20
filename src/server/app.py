@@ -10,11 +10,13 @@ import threading
 import hashlib
 import os
 import uuid
+import base58
 from pathlib import Path
 from web3 import Web3
 from dotenv import load_dotenv
 from dstack_sdk import AsyncTappdClient, DeriveKeyResponse, TdxQuoteResponse
-# from solders.keypair import Keypair
+from solders.keypair import Keypair
+from solders.pubkey import Pubkey
 from src.cli import ZerePyCLI
 
 # Configure logging
@@ -137,6 +139,28 @@ class ZerePyServer:
             allow_headers=["*"],
         )
 
+    async def _generate_solana_keypair(self):
+        """Internal method to generate Solana keypair"""
+        if not self.state.cli.agent:
+            raise HTTPException(
+                status_code=400, 
+                detail="No agent loaded. Use /agents/{name}/load first."
+            )
+        
+        client = AsyncTappdClient(DSTACK_SIMULATOR_ENDPOINT)
+        random_path = f"/{str(uuid.uuid4())}"
+        subject = f"{self.state.cli.agent.name}_solana_v0.1.0"
+        
+        deriveKey = await client.derive_key(random_path, subject)
+        seed = deriveKey.toBytes()[:32]
+        
+        keypair = Keypair.from_seed(seed)
+        
+        return {
+        "publicKey": str(keypair.pubkey()),  # Base58 encoded public key
+        "privateKey": base58.b58encode(bytes(keypair)).decode("utf-8")  # Base58 encoded
+    }
+
     def setup_routes(self):
         @self.app.get("/")
         async def root():
@@ -194,63 +218,37 @@ class ZerePyServer:
 
         @self.app.get("/derivekey/solana")
         async def derive_solana_key():
-            """Get Solana keypair for the current agent"""
-            if not self.state.cli.agent:
-                raise HTTPException(status_code=400, detail="No agent loaded. Use /agents/{name}/load first")
-            
+            """Get Solana keypair"""
             try:
-                client = AsyncTappdClient(DSTACK_SIMULATOR_ENDPOINT)
-                random_path = f"/{str(uuid.uuid4())}"
-                subject = f"{self.state.cli.agent.name}_solana_v0.1.0"
-                deriveKey = await client.derive_key(random_path, subject)
-
-                assert isinstance(deriveKey, DeriveKeyResponse)
-                key_bytes = deriveKey.toBytes()
-                
-                # Calculate SHA256 hash for private key
-                hash_obj = hashlib.sha256()
-                hash_obj.update(key_bytes)
-                private_key = hash_obj.digest()
-                
-                return {
-                    "privateKey": private_key.hex(),
-                    "publicKey": Web3.keccak(private_key).hex()  # Using keccak for public key derivation
-                }
+                return await self._generate_solana_keypair()
             except Exception as e:
                 logger.error(f"Error in derivekey/solana: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
 
-        @self.app.post("/test/new-keys")
-        async def generate_new_keys():
-            """Test endpoint to force generation of new keys"""
-            if not self.state.cli.agent:
-                raise HTTPException(status_code=400, detail="No agent loaded. Use /agents/{name}/load first")
-            
+        @self.app.get("/derivekey/solana/validate")
+        async def validate_solana_key():
+            """Generate and validate a Solana keypair"""
             try:
-                # Clear existing keys
-                os.environ["GOAT_WALLET_PRIVATE_KEY"] = ""
-                os.environ["GOAT_WALLET_PUBKEY"] = ""
+                # Get keypair using shared logic
+                keypair_response = await self._generate_solana_keypair()
                 
-                # Generate new keys using existing derive key logic
-                client = AsyncTappdClient(DSTACK_SIMULATOR_ENDPOINT)
-                random_path = f"/{str(uuid.uuid4())}"
-                subject = f"{self.state.cli.agent.name}_v0.1.0"
-                deriveKey = await client.derive_key(random_path, subject)
+                # Decode for validation
+                private_key_bytes = base58.b58decode(keypair_response["privateKey"])
                 
-                assert isinstance(deriveKey, DeriveKeyResponse)
-                asBytes = deriveKey.toBytes()
+                # Validate through reconstruction
+                reconstructed_keypair = Keypair.from_bytes(private_key_bytes)
                 
-                keccak_private_key_bytes = Web3().keccak(asBytes)
-                keccak_private_key_string = keccak_private_key_bytes.hex().replace("0x", "")
-                
-                set_private_key(keccak_private_key_string)
                 return {
-                    "status": "success",
-                    "new_pubkey": os.getenv("GOAT_WALLET_PUBKEY"),
-                    "message": "New keys generated successfully"
+                    **keypair_response,
+                    "validation": {
+                        "publicKeyMatches": str(reconstructed_keypair.pubkey()) == keypair_response["publicKey"],
+                        "canReconstructFromPrivateKey": True,
+                        "privateKeyLength": len(private_key_bytes),
+                    }
                 }
+            
             except Exception as e:
-                logger.error(f"Error generating new keys: {e}")
+                logger.error(f"Error validating Solana keypair: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
 
 
