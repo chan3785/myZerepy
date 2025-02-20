@@ -93,6 +93,13 @@ class TwitterConnection(BaseConnection):
                 ],
                 description="Fetch tweet replies"
             ),
+            "get-tweet-details": Action(
+                name="get-tweet-details",
+                parameters=[
+                    ActionParameter("tweet_id", True, str, "ID of the tweet to get details for")
+                ],
+                description="Get details for a specific tweet"
+            ),
             "stream-tweets": Action(
                 name="stream-tweets",
                 parameters=[
@@ -517,6 +524,27 @@ class TwitterConnection(BaseConnection):
         
         logger.info(f"Retrieved {len(replies)} replies")
         return replies
+    
+    def get_tweet_details(self, tweet_id: str, **kwargs) -> dict:
+        """Get details for a specific tweet"""
+        logger.debug(f"Getting details for tweet {tweet_id}")
+        
+        params = {
+            "tweet.fields": "author_id,created_at,text,attachments,referenced_tweets",
+            "expansions": "author_id",
+            "user.fields": "username",
+            "ids": tweet_id
+        }
+        
+        response = self._make_request('get', 'tweets', params=params)
+        tweet = response.get("data", [])[0]
+
+        if "includes" in response and "users" in response["includes"]:
+            author = response["includes"]["users"][0]
+            tweet["author_username"] = author["username"]
+        
+        logger.info("Retrieved tweet details")
+        return tweet
     
     def _bearer_oauth(self,r):
         bearer_token = self._get_credentials().get("TWITTER_BEARER_TOKEN")
