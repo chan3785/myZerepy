@@ -581,7 +581,6 @@ class TwitterConnection(BaseConnection):
         rules = self._get_rules()
         self._delete_rules(rules)
         self._build_rule(filter_string)
-        logger.info("Starting Twitter stream")
         try:
             params = {
                 "tweet.fields": "author_id,created_at,text,attachments,referenced_tweets",
