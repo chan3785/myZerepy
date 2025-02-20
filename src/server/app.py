@@ -140,26 +140,40 @@ class ZerePyServer:
         )
 
     async def _generate_solana_keypair(self):
-        """Internal method to generate Solana keypair"""
+        """Internal method to generate Solana keypair and set environment variables"""
         if not self.state.cli.agent:
             raise HTTPException(
                 status_code=400, 
                 detail="No agent loaded. Use /agents/{name}/load first."
             )
         
-        client = AsyncTappdClient(DSTACK_SIMULATOR_ENDPOINT)
-        random_path = f"/{str(uuid.uuid4())}"
-        subject = f"{self.state.cli.agent.name}_solana_v0.1.0"
+        try:
+            client = AsyncTappdClient(DSTACK_SIMULATOR_ENDPOINT)
+            random_path = f"/{str(uuid.uuid4())}"
+            subject = "zerepy_v0.1.0"
+            
+            deriveKey = await client.derive_key(random_path, subject)
+            seed = deriveKey.toBytes()[:32]
+            
+            # Generate Solana keypair
+            keypair = Keypair.from_seed(seed)
+            private_key = base58.b58encode(bytes(keypair)).decode("utf-8")
+            public_key = str(keypair.pubkey())
+            
+            os.environ["SOLANA_PRIVATE_KEY"] = private_key
+            os.environ["GOAT_WALLET_PRIVATE_KEY"] = private_key
+            os.environ["GOAT_WALLET_PUBKEY"] = public_key
+            
+            logger.info(f"Keypair generated. Public key: {public_key}")
+            
+            return {
+                "publicKey": public_key,
+                "privateKey": private_key
+            }
         
-        deriveKey = await client.derive_key(random_path, subject)
-        seed = deriveKey.toBytes()[:32]
-        
-        keypair = Keypair.from_seed(seed)
-        
-        return {
-        "publicKey": str(keypair.pubkey()),  # Base58 encoded public key
-        "privateKey": base58.b58encode(bytes(keypair)).decode("utf-8")  # Base58 encoded
-    }
+        except Exception as e:
+            logger.error(f"Error generating keypair: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
 
     def setup_routes(self):
         @self.app.get("/")
