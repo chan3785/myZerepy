@@ -583,15 +583,29 @@ class TwitterConnection(BaseConnection):
         self._build_rule(filter_string)
         logger.info("Starting Twitter stream")
         try:
+            params = {
+                "tweet.fields": "author_id,created_at,text,attachments,referenced_tweets",
+                "user.fields": "username",
+                "expansions": "author_id"
+            }
             response = self._make_request('get', 'tweets/search/stream', 
-                                        use_bearer=True, stream=True)
+                                        use_bearer=True, stream=True, params=params)
             
             if response.status_code != 200:
                 raise TwitterAPIError(f"Stream connection failed with status {response.status_code}: {response.text}")
                 
             for line in response.iter_lines():
+
                 if line:
-                    tweet_data = json.loads(line)['data']
+                    tweet_json = json.loads(line)
+                    
+                    tweet_data = tweet_json.get("data", {})
+                    includes = tweet_json.get("includes", {})
+
+                    if includes and "users" in includes:
+                        author = includes["users"][0]
+                        tweet_data["author_username"] = author["username"]
+
                     yield tweet_data
                 
         except Exception as e:

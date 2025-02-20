@@ -107,15 +107,9 @@ def respond_to_mentions(agent,**kwargs): #REQUIRES TWITTER PREMIUM PLAN
     def process_tweets():
         for tweet_data in stream_function:
             try:
-                tweet_id = tweet_data["id"]
-                tweet = agent.connection_manager.perform_action(
-                    connection_name="twitter",
-                    action_name="get-tweet-details",
-                    params=[tweet_id]
-                )
-                tweet_author = tweet.get("author_username", "")
-                tweet_text = tweet.get("text", "")
-
+                tweet_id = tweet_data.get("id", "")
+                tweet_author = tweet_data.get("author_username", "")
+                tweet_text = tweet_data.get("text", "")
                 agent.logger.info(f"Received a mention from @{tweet_author}: {tweet_text}")            
             except Exception as e:
                 agent.logger.error(f"Error processing tweet in stream: {str(e)}")
