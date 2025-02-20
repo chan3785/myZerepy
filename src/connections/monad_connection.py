@@ -279,9 +279,10 @@ class MonadConnection(BaseConnection):
         try:
             # Check balance including gas cost since Monad charges on gas limit
             gas_cost = Web3.to_wei(MONAD_BASE_GAS_PRICE * 21000, 'gwei')
-            total_required = amount + self._web3.from_wei(gas_cost, 'ether')
+            gas_cost_eth = float(self._web3.from_wei(gas_cost, 'ether'))
+            total_required = float(amount) + gas_cost_eth
             
-            current_balance = self.get_balance(token_address=token_address)
+            current_balance = float(self.get_balance(token_address=token_address))
             if current_balance < total_required:
                 raise ValueError(
                     f"Insufficient balance. Required: {total_required}, Available: {current_balance}"
@@ -301,6 +302,7 @@ class MonadConnection(BaseConnection):
         except Exception as e:
             logger.error(f"Transfer failed: {str(e)}")
             raise
+
     def _get_swap_quote(
         self,
         token_in: str,
@@ -310,6 +312,7 @@ class MonadConnection(BaseConnection):
     ) -> Dict:
         """Get swap quote from 0x API"""
         try:
+            load_dotenv()
             # Convert amount to raw value with proper decimals
             if token_in.lower() == self.NATIVE_TOKEN.lower():
                 amount_raw = self._web3.to_wei(amount, 'ether')
@@ -321,17 +324,21 @@ class MonadConnection(BaseConnection):
                 decimals = token_contract.functions.decimals().call()
                 amount_raw = int(amount * (10 ** decimals))
 
-            # Prepare API request
+            # The URL should match exactly
             url = "https://api.0x.org/swap/permit2/quote"
+            
+            # Headers should match exactly
             headers = {
                 "0x-api-key": os.getenv('ZEROEX_API_KEY'),
                 "0x-version": "v2"
             }
+            
+            # Parameters should match exactly
             params = {
                 "sellToken": token_in,
                 "buyToken": token_out,
                 "sellAmount": str(amount_raw),
-                "chainId": self.chain_id,
+                "chainId": str(self.chain_id),  # Convert to string to match exact format
                 "taker": sender
             }
 
@@ -424,27 +431,35 @@ class MonadConnection(BaseConnection):
                 account.address
             )
             
+            logger.debug(f"Quote data received: {quote_data}")
+
+            # Extract transaction data from the nested structure
+            transaction = quote_data.get("transaction")
+            if not transaction or not transaction.get("to") or not transaction.get("data"):
+                raise ValueError("Invalid transaction data in quote")
+                
             # Handle token approval if needed
             if token_in.lower() != self.NATIVE_TOKEN.lower():
                 spender_address = quote_data.get("allowanceTarget")
                 amount_raw = int(quote_data.get("sellAmount"))
                     
-                approval_hash = self._handle_token_approval(token_in, spender_address, amount_raw)
-                if approval_hash:
-                    logger.info(f"Token approval transaction: {self._get_explorer_link(approval_hash)}")
-                    # Wait for approval confirmation
-                    self._web3.eth.wait_for_transaction_receipt(approval_hash)
+                if spender_address:  # Only attempt approval if we have a spender address
+                    approval_hash = self._handle_token_approval(token_in, spender_address, amount_raw)
+                    if approval_hash:
+                        logger.info(f"Token approval transaction: {self._get_explorer_link(approval_hash)}")
+                        # Wait for approval confirmation
+                        self._web3.eth.wait_for_transaction_receipt(approval_hash)
             
-            # Prepare swap transaction
+            # Prepare swap transaction using the nested transaction data
             tx = {
                 'from': account.address,
-                'to': Web3.to_checksum_address(quote_data["to"]),
-                'data': quote_data["data"],
+                'to': Web3.to_checksum_address(transaction["to"]),
+                'data': transaction["data"],
                 'value': self._web3.to_wei(amount, 'ether') if token_in.lower() == self.NATIVE_TOKEN.lower() else 0,
                 'nonce': self._web3.eth.get_transaction_count(account.address),
                 'gasPrice': Web3.to_wei(MONAD_BASE_GAS_PRICE, 'gwei'),
                 'chainId': self.chain_id,
-                'gas': 500000  # Fixed gas limit for swaps on Monad
+                'gas': int(transaction.get("gas", 500000))  # Use gas from quote or fallback to 500000
             }
 
             # Sign and send transaction
