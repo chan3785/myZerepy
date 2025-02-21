@@ -106,7 +106,7 @@ def respond_to_mentions(agent,**kwargs): #REQUIRES TWITTER PREMIUM PLAN
     user_ids = agent.connection_manager.perform_action(
         connection_name="twitter",
         action_name="get-user-details",
-        params = [None, accounts_to_listen_to]
+        params = [[], accounts_to_listen_to]
     )
     if user_ids:
         accounts_to_listen_to_ids = [user.get('id') for user in user_ids]
