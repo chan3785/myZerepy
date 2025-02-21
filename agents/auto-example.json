@@ -1,6 +1,6 @@
 {
   "config": {
-    "name": "ExampleAgent",
+    "name": "AutonomousExampleAgent",
     "type": "autonomous",
     "loop_delay": 60
   },
@@ -51,6 +51,12 @@
       "name": "openai",
       "config": {
         "model": "gpt-3.5-turbo"
+      }
+    },
+    {
+      "name": "perplexity",
+      "config": {
+        "model": "sonar-reasoning"
       }
     },
     {

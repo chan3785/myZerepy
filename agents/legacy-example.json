@@ -1,6 +1,6 @@
 {
   "config": {
-    "name": "ExampleAgent",
+    "name": "LegacyExampleAgent",
     "type": "legacy",
     "loop_delay": 900,
     "time_based_multipliers": {

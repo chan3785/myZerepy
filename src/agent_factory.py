@@ -5,7 +5,6 @@ from pydantic import BaseModel, PositiveInt
 from src.agent import ZerePyAgent
 from src.legacy_agent import LegacyZerePyAgent
 
-
 class AgentType(Enum):
     AUTONOMOUS = "autonomous"
     LEGACY = "legacy"
