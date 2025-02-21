@@ -15,6 +15,7 @@ from src.legacy_agent import LegacyZerePyAgent
 from src.agent_factory import AgentFactory
 from src.helpers import print_h_bar
 from src.langgraph.langgraph_agent import LangGraphAgent
+from src.migration_script import migrate_config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -153,6 +154,17 @@ class ZerePyCLI:
                 tips=["Use 'exit' to end the chat session"],
                 handler=self.chat_session,
                 aliases=['talk']
+            )
+        )
+
+        # Migrate agent config command
+        self._register_command(
+            Command(
+                name="migrate",
+                description="Migrate agent configuration from old to new format.",
+                tips=["Use this command to convert old agent JSON files to the new format"],
+                handler=self.migrate_agent_config,
+                aliases=['migrate-config']
             )
         )
 
@@ -514,24 +526,17 @@ class ZerePyCLI:
 
     def chat_session(self, input_list: List[str]) -> None:
         """Handle chat command"""
-        langchain_session = False
 
         if self.agent is None:
             logger.info("No agent loaded. Use 'load-agent' first.")
             return
         
-        run_langchain = input("Do you want to start a Langchain session chat? (y/n): ")
 
-        if (run_langchain.lower() == 'y'):
-            #load langgraph agent 
-            self.langgraph_agent = LangGraphAgent(self.agent_file_name, True, connection_manager=self.agent.connection_manager)
-            langchain_session = True
-            messages = []
+        #load langgraph agent 
+        langgraph_agent = LangGraphAgent("openai","gpt-3.5-turbo",True,self.agent.connection_manager)
+        messages = []
 
-        if not self.agent.is_llm_set:
-            self.agent._setup_llm_provider()
-
-        logger.info(f"\nStarting chat with {self.agent.name} [" + ("Langchain Mode" if langchain_session else "Normal Mode") + "]")
+        logger.info(f"\nStarting chat with {self.agent.name}")
         print_h_bar()
 
         while True:
@@ -543,17 +548,25 @@ class ZerePyCLI:
 
                 messages.append({"role": "user", "content": user_input})
 
-                if (langchain_session):
-                    response = self.langgraph_agent.invoke_chat(messages)
-                    messages.append({"role": "assistant", "content": response})
-                else:
-                    response = self.agent.prompt_llm(user_input)
+                response = langgraph_agent.invoke_chat(messages)
+                messages.append({"role": "assistant", "content": response})
 
                 logger.info(f"\n{self.agent.name}: {response}")
                 print_h_bar()
                 
             except KeyboardInterrupt:
                 break
+            
+    def migrate_agent_config(self, input_list: List[str]) -> None:
+        """Migrate agent configuration from old to new format."""
+        print_h_bar()
+        
+        agent_file_name = input("Enter the name of the agent file to migrate: ").strip()
+        agent_type_input = input("Enter the agent type (a for autonomous, l for legacy): ").strip().lower()
+        
+        agent_type = "autonomous" if agent_type_input == "a" else "legacy"
+        
+        migrate_config(agent_file_name, agent_type)
 
     def exit(self, input_list: List[str]) -> None:
         """Exit the CLI gracefully"""

@@ -125,11 +125,15 @@ class ZerePyAgent:
             # TASK CONFIGS
             self.tasks = agent_config.get("tasks", [])
             self.task_weights = [task.get("weight", 0) for task in self.tasks]
+            self.loop_task = False
 
         except KeyError as e:
             raise KeyError(f"Missing required field in agent configuration: {e}")
         except Exception as e:
             raise Exception(f"Error setting up agent configs: {e}")
+        
+    def perform_action(self, connection: str, action: str, **kwargs) -> None:
+        return self.connection_manager.perform_action(connection, action, **kwargs)
 
     def _construct_system_prompt(self) -> str:
         """Construct the system prompt from agent configuration"""
@@ -238,7 +242,7 @@ class ZerePyAgent:
             response = self.executor_agent.invoke(execution_prompt)
             state = self.executor_agent.process_response(response, state)
         
-        return {"action_log": state["action_log"]}
+        return state
 
     def evaluation_step(self, state: AgentState):
         #Convert action_logs to a summary of what the agent did, and then pass it to task_log
@@ -250,7 +254,7 @@ class ZerePyAgent:
         print(f"Generated task log:\n{generated_task_log}")
         state["action_plan"] = []
         state["action_log"] = []
-        state["current_task"] = None
+        state["current_task"] = state["current_task"] if self.loop_task else None
         state["task_log"].append(generated_task_log)
         state["task_log"] = state["task_log"][-3:]  #trim to the last 3 task logs
 
@@ -258,6 +262,24 @@ class ZerePyAgent:
         logger.info(f"\n⏳ Waiting {self.loop_delay} seconds before next loop...")
         print_h_bar()
         time.sleep(self.loop_delay)
+        return state
+    
+    def process_task(self, task: str): # Process a single task
+        state = {
+            "context": {},
+            "current_task": task,
+            "context_summary": "",
+            "action_plan": [],
+            "action_log": [],
+            "task_log": [],
+        }
+        
+        state.update(self.observation_step(state))
+        state.update(self.determination_step(state))
+        state.update(self.division_step(state))
+        state = self.execution_step(state)
+        state.update(self.evaluation_step(state))
+        
         return state
 
     def loop(self, task=None):
@@ -269,6 +291,10 @@ class ZerePyAgent:
         task_to_perform = input("\n🔹 Enter the first task to perform (e.g., 'Read the timeline, then write a tweet about it').\n"
                                 "🔹 Or simply press Enter to let the agent autonomously decide its own tasks and plans in a loop.\n\n➡️ YOUR TASK: "
                                 )
+        if task_to_perform:
+            loop_task = input("\n🔄 Would you like to repeat this task in every loop? \n"
+                  "Enter 'y' for yes, or 'n' to let the agent generate new tasks dynamically in each loop.\n\n➡️ YOUR CHOICE: ")
+            self.loop_task = True if loop_task.lower() == "y" else False
 
         initial_state = {
             "context": {},

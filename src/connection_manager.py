@@ -146,6 +146,12 @@ class ConnectionManager:
     def get_connections(self):
         return self.connections
 
+    def refresh_connections(self) -> None:
+        """Force a refresh (re-registration) on all connections needing it."""
+        for name, connection in self.connections.items():
+            if isinstance(connection, GoatConnection): #for now, only GoatConnection needs to be refreshed due to wallet registration (temp fix)
+                connection.is_configured()
+
     def list_actions(self, connection_name: str) -> None:
         """List all available actions for a specific connection"""
         try:

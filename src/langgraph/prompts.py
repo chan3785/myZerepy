@@ -8,7 +8,9 @@ DETERMINATION_PROMPT = """Based on the given context and available actions, gene
                         "CONTEXT SUMMARY:\n{context_summary}"
                         "\n\nAVAILABLE ACTIONS FOR EACH CONNECTION:\n\n" 
                         "{connection_action_list}"
-                        "Example : Create a funny tweet and post it on Twitter"""
+                        "Example Outputs:\n 
+                            1. Create a funny tweet and post it on Twitter
+                            2. Search for tweets about a specific topic and reply to them"""
 
 
 DIVISION_PROMPT = """Based on the given task and available actions, generate an action plan for the agent. Only respond with the list of steps needed (with the corresponding actions mentioned), and put each step on a new line. Only include actions that involve making requests—do not include actions like editing dialog boxes, clicking buttons, or other UI interactions.
@@ -24,20 +26,19 @@ DIVISION_PROMPT = """Based on the given task and available actions, generate an 
 
                     Output: 
                     1. Generate text using openai `generate-text` with the prompt "Create a funny tweet" and the specified system prompt
-                    2. Post the generated text using `post-tweet` with the output from step 1
+                    2. Post the generated text using `post-tweet` with the output from step 1 as the 'message' parameter
 
                     Rules:
                     - Do not combine multiple actions into one step
                     - Do not escape to a new line for a single step, until the step is complete
                     - Each step should represent a single action
-                    - When using `generate-text`, include the complete system prompt from the LLM configuration
                     - Be explicit about which parameters are required for each action"""
 
 EXECUTION_PROMPT =  ("Before executing the following action, consider the previous action log:\n\n"
                     "ACTION LOG:\n{action_log}\n\n"
                     "Here is your preferred configurations for LLM related actions:\n\n"
                     "LLM Configuration:\n{preferred_llm_config}\n\n"
-                    "Make sure to use the exact configuration provided above for the `generate-text` action. Copy the entire configuration, including the complete system prompt.\n\n"
+                    "Make sure to use the exact configuration provided above for the `generate-text` action. Copy the entire configuration, including the complete system prompt.When used to create a text for a tweet, always specify it under 280 characters in the prompt\n\n"
                     "Refer to the 'final_response' field in the tool action log to quickly see the final response from the agent\n\n"
                     "Now, execute this action based on the prior results: {action}")
 

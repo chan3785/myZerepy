@@ -13,7 +13,10 @@
         "You are naturally curious, and ask a lot of questions."
       ],
       "traits": ["Curious", "Creative", "Innovative", "Funny"],
-      "examples": ["This is an example tweet.", "This is another example tweet."],
+      "examples": [
+        "This is an example tweet.",
+        "This is another example tweet."
+      ],
       "example_accounts": ["0xzerebro"],
       "model_provider": "openai",
       "model": "gpt-3.5-turbo"
@@ -63,6 +66,84 @@
       "name": "anthropic",
       "config": {
         "model": "claude-3-5-sonnet-20241022"
+      }
+    },
+    {
+      "name": "xai",
+      "config": {
+        "model": "grok-2-latest"
+      }
+    },
+    {
+      "name": "solana",
+      "config": {
+        "rpc": "https://api.mainnet-beta.solana.com"
+      }
+    },
+    {
+      "name": "ethereum",
+      "config": {
+        "rpc": "https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID"
+      }
+    },
+    {
+      "name": "eternalai",
+      "config": {
+        "model": "NousResearch/Hermes-3-Llama-3.1-70B-FP8",
+        "chain_id": "45762"
+      }
+    },
+    {
+      "name": "ollama",
+      "config": {
+        "base_url": "http://localhost:11434",
+        "model": "llama3.2"
+      }
+    },
+    {
+      "name": "goat",
+      "config": {
+        "plugins": [
+          {
+            "name": "coingecko",
+            "args": {
+              "api_key": "YOUR_API_KEY"
+            }
+          },
+          {
+            "name": "erc20",
+            "args": {
+              "tokens": [
+                "goat_plugins.erc20.token.PEPE",
+                "goat_plugins.erc20.token.USDC"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "hyperbolic",
+      "config": {
+        "model": "meta-llama/Meta-Llama-3-70B-Instruct"
+      }
+    },
+    {
+      "name": "galadriel",
+      "config": {
+        "model": "gpt-3.5-turbo"
+      }
+    },
+    {
+      "name": "sonic",
+      "config": {
+        "network": "mainnet"
+      }
+    },
+    {
+      "name": "allora",
+      "config": {
+        "chain_slug": "testnet"
       }
     }
   ]
