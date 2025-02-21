@@ -291,9 +291,10 @@ class ZerePyAgent:
         task_to_perform = input("\n🔹 Enter the first task to perform (e.g., 'Read the timeline, then write a tweet about it').\n"
                                 "🔹 Or simply press Enter to let the agent autonomously decide its own tasks and plans in a loop.\n\n➡️ YOUR TASK: "
                                 )
-        loop_task = input("\n🔄 Would you like to repeat this task in every loop? \n"
+        if task_to_perform:
+            loop_task = input("\n🔄 Would you like to repeat this task in every loop? \n"
                   "Enter 'y' for yes, or 'n' to let the agent generate new tasks dynamically in each loop.\n\n➡️ YOUR CHOICE: ")
-        self.loop_task = True if loop_task.lower() == "y" else False
+            self.loop_task = True if loop_task.lower() == "y" else False
 
         initial_state = {
             "context": {},
