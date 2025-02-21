@@ -26,7 +26,7 @@
       "own_tweet_replies_count":2,
       "tweet_interval": 5400,
       "respond_to_mentions": {
-        "enabled": true,
+        "enabled": false,
         "accounts_mentioned": ["0xzerebro"],
         "accounts_to_listen_to": ["0xzerebro"]
       }
