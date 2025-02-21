@@ -148,6 +148,30 @@ class ZerePyServer:
                 return {"status": "success", "result": result}
             except Exception as e:
                 raise HTTPException(status_code=400, detail=str(e))
+        
+        @self.app.post("/agent/task")
+        async def process_task(task_request: TaskRequest):
+            """Process a specific task"""
+            if not self.state.cli.agent:
+                raise HTTPException(status_code=400, detail="No agent loaded")
+            
+            try:
+                # Set loop task flag if requested
+                self.state.cli.agent.loop_task = task_request.loop
+                
+                # Process the task
+                state = await asyncio.to_thread(
+                    self.state.cli.agent.process_task,
+                    task=task_request.task
+                )
+                
+                return {
+                    "status": "success",
+                    "state": state,
+                    "message": "Task processed successfully"
+                }
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=str(e))
 
         @self.app.post("/agent/start")
         async def start_agent():
