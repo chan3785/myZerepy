@@ -47,7 +47,14 @@ class ZerePyAgent:
             if self.has_twitter_tasks and twitter_config:
                 self.tweet_interval = twitter_config.get("tweet_interval", 900)
                 self.own_tweet_replies_count = twitter_config.get("own_tweet_replies_count", 2)
-                self.respond_to_mentions = twitter_config.get("respond_to_mentions", False)  
+                respond_to_mentions_config = twitter_config.get("respond_to_mentions", None)
+
+                if (respond_to_mentions_config):
+                    self.respond_to_mentions = respond_to_mentions_config.get("enabled", False)
+                    self.accounts_mentioned = respond_to_mentions_config.get("accounts_mentioned", [])
+                    self.accounts_to_listen_to = respond_to_mentions_config.get("accounts_to_listen_to", [])
+                else:
+                    self.respond_to_mentions = False
 
             # Extract Echochambers config
             echochambers_config = next((config for config in agent_dict["config"] if config["name"] == "echochambers"), None)
@@ -176,15 +183,16 @@ class ZerePyAgent:
         if self.has_twitter_tasks:
             if self.respond_to_mentions:
                 logger.info("\n👀 Listening for mentions...")
-                execute_action(self, "respond-to-mentions")
-          
+                if (len(self.accounts_mentioned) == 0):
+                    self.accounts_mentioned = [self.username] # Default to listening to own mentions if no accounts mentioned
+                execute_action(self, "respond-to-mentions", accounts_mentioned=self.accounts_mentioned, accounts_to_listen_to=self.accounts_to_listen_to) 
         try:
             while True:
                 success = False
                 try:
                     # REPLENISH INPUTS
                     # TODO: Add more inputs to complexify agent behavior
-                    if "timeline_tweets" not in self.state or self.state["timeline_tweets"] is None or len(self.state["timeline_tweets"]) == 0:
+                    '''if "timeline_tweets" not in self.state or self.state["timeline_tweets"] is None or len(self.state["timeline_tweets"]) == 0:
                         if (self.has_twitter_tasks):
                             logger.info("\n👀 READING TIMELINE")
                             self.state["timeline_tweets"] = self.connection_manager.perform_action(
@@ -200,7 +208,7 @@ class ZerePyAgent:
                                 connection_name="echochambers",
                                 action_name="get-room-info",
                                 params={}
-                            )
+                            )'''
 
                     # CHOOSE AN ACTION
                     # TODO: Add agentic action selection

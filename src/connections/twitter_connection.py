@@ -93,6 +93,14 @@ class TwitterConnection(BaseConnection):
                 ],
                 description="Fetch tweet replies"
             ),
+            "get-user-details": Action(
+                name="get-user-details",
+                parameters=[
+                    ActionParameter("user_ids", True, list, "IDs of the user to get details for"),
+                    ActionParameter("usernames", True, list, "Usernames of the user to get details for")
+                ],
+                description="Get details for user(s) by ID or username"
+            ),
             "get-tweet-details": Action(
                 name="get-tweet-details",
                 parameters=[
@@ -524,6 +532,26 @@ class TwitterConnection(BaseConnection):
         
         logger.info(f"Retrieved {len(replies)} replies")
         return replies
+
+    def get_user_details(self, user_ids: list, usernames: list, **kwargs) -> dict:
+        """Get details for user(s) by ID or username"""
+        logger.debug(f"Getting details for user_ids: {user_ids} or usernames: {usernames}")
+
+        params = {"user.fields": "username"}
+    
+        if user_ids:
+            params["ids"] = ",".join(user_ids)
+            endpoint = "users"
+        else:
+            params["usernames"] = ",".join(usernames)
+            endpoint = f"users/by/"
+
+        response = self._make_request('get', endpoint, params=params)
+    
+        users = response.get("data", [])
+    
+        logger.info("Retrieved user details")
+        return users
     
     def get_tweet_details(self, tweet_id: str, **kwargs) -> dict:
         """Get details for a specific tweet"""
