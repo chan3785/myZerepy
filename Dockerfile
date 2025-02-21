@@ -27,14 +27,14 @@ RUN poetry --version
 WORKDIR /app
 
 # Copy Poetry files
-COPY pyproject.toml poetry.lock ./
+COPY pyproject.toml /app/
 
 # Install dependencies
 RUN poetry config virtualenvs.create false \
-    && poetry install --no-root
+    && poetry lock && poetry install --no-root --extras server
 
 # Copy application code
-COPY . .
+COPY . /app/
 
 # Expose port
 EXPOSE 8000
