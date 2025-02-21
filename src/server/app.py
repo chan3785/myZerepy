@@ -18,6 +18,11 @@ class ActionRequest(BaseModel):
     action: str
     params: Optional[List[str]] = []
 
+class TaskRequest(BaseModel):
+    """Request model for task processing"""
+    task: str
+    loop: Optional[bool] = False
+
 class ServerState:
     """Simple state management for the server"""
     def __init__(self):
