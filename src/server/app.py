@@ -49,7 +49,6 @@ class TdxQuoteRequest(BaseModel):
 class ExecuteCommandRequest(BaseModel):
     """Request model for command execution"""
     args: List[str]
-
 class ServerState:
     """Simple state management for the server"""
     def __init__(self):
