@@ -27,7 +27,7 @@
       "tweet_interval": 5400,
       "respond_to_mentions": {
         "enabled": false,
-        "accounts_mentioned": ["0xzerebro"],
+        "accounts_mentioned": ["blormmy"],
         "accounts_to_listen_to": ["0xzerebro"]
       }
     },
