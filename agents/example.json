@@ -24,7 +24,12 @@
       "name": "twitter",
       "timeline_read_count": 10,
       "own_tweet_replies_count":2,
-      "tweet_interval": 5400
+      "tweet_interval": 5400,
+      "respond_to_mentions": {
+        "enabled": false,
+        "accounts_mentioned": ["blormmy"],
+        "accounts_to_listen_to": ["0xzerebro"]
+      }
     },
     {
       "name": "farcaster",
