@@ -23,15 +23,18 @@ ENV PATH="/root/.local/bin:$PATH"
 # Verify Poetry installation
 RUN poetry --version
 
+
 # Set working directory
 WORKDIR /app
 
 # Copy Poetry files
-COPY pyproject.toml /app/
+COPY pyproject.toml poetry.lock /app/
 
-# Install dependencies
-RUN poetry config virtualenvs.create false \
-    && poetry lock && poetry install --no-root --extras server
+
+# Install dependencies, including the 'server' extra
+RUN poetry install --no-root --with=server
+
+
 
 # Copy application code
 COPY . /app/
@@ -43,4 +46,4 @@ EXPOSE 8000
 ENV DSTACK_SIMULATOR_ENDPOINT="http://tappd:8090"
 
 # Command to run the application using app.py
-CMD ["poetry", "run", "python", "main.py", "--server"]
+CMD ["poetry","run","python", "main.py", "--server"]

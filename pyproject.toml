@@ -34,8 +34,12 @@ goat-sdk-plugin-dexscreener = "^0.1.1"
 dstack-sdk = "^0.1.5"
 asyncio = "^3.4.3"
 
-[tool.poetry.extras]
-server = ["fastapi", "uvicorn", "requests"]
+[tool.poetry.group.server]
+optional = true
+
+[tool.poetry.group.server.dependencies]
+uvicorn = "^0.34.0"
+fastapi = "^0.115.8"
 
 [build-system]
 requires = ["poetry-core"]
