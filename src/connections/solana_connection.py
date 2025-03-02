@@ -198,7 +198,7 @@ class SolanaConnection(BaseConnection):
                 parameters=[
                     ActionParameter("ticker", True, str, "Token ticker symbol")
                 ],
-                description="Get token data by ticker symbol",
+                description="Get token data by ticker symbol/name",
             ),
             "get-token-by-address": Action(
                 name="get-token-by-address",

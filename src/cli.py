@@ -99,6 +99,17 @@ class ZerePyCLI:
                 aliases=['loop', 'start']
             )
         )
+
+           # Agent query command
+        self._register_command(
+            Command(
+                name="agent-query",
+                description="Allows for testing the response of the agent.",
+                tips=["Press Ctrl+C to stop the execution"],
+                handler=self.agent_query,
+                aliases=['query', 'invoke']
+            )
+        )
         
         # List agents command
         self._register_command(
@@ -429,6 +440,26 @@ class ZerePyCLI:
             logger.info("\n🛑 Agent loop stopped by user.")
         except Exception as e:
             logger.error(f"Error in agent loop: {e}")
+    
+    def agent_query(self, input_list: List[str]) -> None:
+        """Handle agent loop command"""
+        if self.agent is None:
+            logger.info("No agent is currently loaded. Use 'load-agent' to load an agent.")
+            return
+        
+        if (isinstance(self.agent, LegacyZerePyAgent)):
+            logger.info("This command is not supported for legacy agents.")
+            return
+
+        try:
+            state = self.agent.process_task()
+            logger.debug(f"FINAL STATE: {state}")
+            logger.info(f"Final response: {state['final_response']}")
+
+        except KeyboardInterrupt:
+            logger.info("\n🛑 Agent loop stopped by user.")
+        except Exception as e:
+            logger.error(f"Error when querying agent: {e}")
 
     def list_agents(self, input_list: List[str]) -> None:
         """Handle list agents command"""

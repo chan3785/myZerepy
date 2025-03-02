@@ -17,6 +17,7 @@ class AgentState(TypedDict):
     action_plan: list
     action_log: list
     task_log: list
+    process_flag: bool
 
 class ZerePyAgent:
     def __init__(self, agent_config: dict):
@@ -191,12 +192,12 @@ class ZerePyAgent:
         print("\n=== OBSERVATION STEP ===")
         print(f"Summarizing contextual information...")
 
-        # Update AgentState context
         state["context"] = self._replenish_inputs(state["context"])
+        query = state['current_task']
 
         try:
             observation_prompt = OBSERVATION_PROMPT.format(context=state['context'], task_log=state['task_log'])
-            context_summary = self.driver_llm.invoke(observation_prompt).content
+            context_summary = self.executor_agent.invoke(observation_prompt).content
         except Exception as e:
             logger.error(f"Error generating context summary: {e}")
             context_summary = "There is currently no additional context available."
@@ -206,13 +207,12 @@ class ZerePyAgent:
 
     def determination_step(self, state: AgentState):
         print("\n=== DETERMINATION STEP ===")
-        print("Determining next task...")
+        print("Determining task from user query...")
 
-        task = state['current_task']
+        query = state['current_task']
 
-        if task is None or task.strip() == "":
-            determination_prompt = DETERMINATION_PROMPT.format(context_summary=state['context_summary'], connection_action_list="\n\n".join(connection.__str__() for connection in self.connections.values()))
-            task = self.character_llm.invoke(determination_prompt).content
+        determination_prompt = DETERMINATION_PROMPT.format(user_query=query, connection_action_list="\n\n".join(connection.__str__() for connection in self.connections.values()))
+        task = self.character_llm.invoke(determination_prompt).content
 
         print(f"\nDETERMINED TASK: {task}")
         return {"current_task": task}
@@ -220,7 +220,7 @@ class ZerePyAgent:
     def division_step(self, state: AgentState):
         print("\n=== DIVISION STEP ===")
         print(f"Creating action plan for task: {state['current_task']}")
-        division_prompt = DIVISION_PROMPT.format(current_task=state['current_task'], connection_action_list="\n\n".join(connection.__str__() for connection in self.connections.values()))
+        division_prompt = DIVISION_PROMPT.format(current_task=state['current_task'], connection_action_list="\n\n".join(connection.__str__() for connection in self.connections.values()), preferred_llm_config=str(self.llm_prefs))
         action_plan_text = self.driver_llm.invoke(division_prompt).content
         action_plan = action_plan_text.split("\n")
 
@@ -234,7 +234,7 @@ class ZerePyAgent:
 
         if not action_plan:
             print("No actions to execute")
-            return 
+            return state
 
         for action in action_plan:
             print(f"\nExecuting action: {action}")
@@ -252,19 +252,23 @@ class ZerePyAgent:
         evaluation_prompt = EVALUATION_PROMPT.format(current_task=state['current_task'], action_log =  "\n".join(f"{action['action']}:\n" +f"Result: {action['result']}"for action in action_log))
         generated_task_log = self.driver_llm.invoke(evaluation_prompt).content
         print(f"Generated task log:\n{generated_task_log}")
-        state["action_plan"] = []
-        state["action_log"] = []
         state["current_task"] = state["current_task"] if self.loop_task else None
         state["task_log"].append(generated_task_log)
         state["task_log"] = state["task_log"][-3:]  #trim to the last 3 task logs
 
-        # Delay before next loop
-        logger.info(f"\n⏳ Waiting {self.loop_delay} seconds before next loop...")
+        if (not state["process_flag"]): #only clear the action log if in a loop
+            state["action_log"] = []  
+            state["action_plan"] = [] 
+            logger.info(f"\n⏳ Waiting {self.loop_delay} seconds before next loop...") # Delay before next loop
+            time.sleep(self.loop_delay)
+            
         print_h_bar()
-        time.sleep(self.loop_delay)
         return state
     
-    def process_task(self, task: str): # Process a single task
+    def process_task(self, task: str = None): # Process a single task
+        if task is None:
+            task = input("\n🔹 Enter the task to perform (e.g., 'Read the timeline, then write a tweet about it').\n\n➡️ YOUR TASK: ")
+
         state = {
             "context": {},
             "current_task": task,
@@ -272,13 +276,15 @@ class ZerePyAgent:
             "action_plan": [],
             "action_log": [],
             "task_log": [],
+            "process_flag": True
         }
-        
-        state.update(self.observation_step(state))
         state.update(self.determination_step(state))
         state.update(self.division_step(state))
         state = self.execution_step(state)
         state.update(self.evaluation_step(state))
+        
+        #add final_response of the last action to the state
+        state["final_response"] = state["action_log"][-1]["final_response"] if state["action_log"] else None
         
         return state
 
@@ -303,6 +309,7 @@ class ZerePyAgent:
             "action_plan": [],
             "action_log": [],
             "task_log": [],
+            "process_flag": False
         }
         logger.info(f"\n🚀 Starting autonomous agent loop ...")
         logger.info("Press Ctrl+C at any time to stop the loop.")
