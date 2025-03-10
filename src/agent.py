@@ -166,16 +166,16 @@ class ZerePyAgent:
     def _replenish_inputs(self, context_dict: dict = {}):
         try:
             if "timeline_tweets" not in context_dict or context_dict["timeline_tweets"] is None or len(context_dict["timeline_tweets"]) == 0:
-                if any("tweet" in task["name"] for task in self.tasks):
-                    logger.info("\n👀 READING TIMELINE")
-                    context_dict["timeline_tweets"] = self.connection_manager.perform_action(
-                        connection_name="twitter",
-                        action_name="read-timeline",
-                        params=[]
-                    )
+                if (self.connections.get("twitter")):
+                        logger.info("\n👀 READING TIMELINE")
+                        context_dict["timeline_tweets"] = self.connection_manager.perform_action(
+                            connection_name="twitter",
+                            action_name="read-timeline",
+                            params=[]
+                        )
 
             if "room_info" not in context_dict or context_dict["room_info"] is None:
-                if any("echochambers" in task["name"] for task in self.tasks):
+                if (self.connections.get("echochambers")):
                     logger.info("\n👀 READING ECHOCHAMBERS ROOM INFO")
                     context_dict["room_info"] = self.connection_manager.perform_action(
                         connection_name="echochambers",
@@ -197,22 +197,24 @@ class ZerePyAgent:
 
         try:
             observation_prompt = OBSERVATION_PROMPT.format(context=state['context'], task_log=state['task_log'])
-            context_summary = self.executor_agent.invoke(observation_prompt).content
+            print(f"Observation Prompt: {observation_prompt}")
+            context_summary = self.character_llm.invoke(observation_prompt).content
         except Exception as e:
             logger.error(f"Error generating context summary: {e}")
             context_summary = "There is currently no additional context available."
 
         print(f"\nCONTEXT SUMMARY:\n{context_summary}")
         return {"context_summary": context_summary}
-
+    
     def determination_step(self, state: AgentState):
         print("\n=== DETERMINATION STEP ===")
-        print("Determining task from user query...")
+        print("Determining next task...")
 
-        query = state['current_task']
+        task = state['current_task']
 
-        determination_prompt = DETERMINATION_PROMPT.format(user_query=query, connection_action_list="\n\n".join(connection.__str__() for connection in self.connections.values()))
-        task = self.character_llm.invoke(determination_prompt).content
+        if task is None or task.strip() == "":
+            determination_prompt = DETERMINATION_PROMPT.format(context_summary=state['context_summary'], connection_action_list="\n\n".join(connection.__str__() for connection in self.connections.values()))
+            task = self.character_llm.invoke(determination_prompt).content
 
         print(f"\nDETERMINED TASK: {task}")
         return {"current_task": task}

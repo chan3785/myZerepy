@@ -4,13 +4,14 @@ OBSERVATION_PROMPT = ("TASK:\nSummarize the provided context and list of previou
                           "PREVIOUS TASKS:\n{task_log}\n\n"
                           "SUMMARY:\n")
 
-DETERMINATION_PROMPT = """Based on the provided user query and the actions available to you, clearly state the task you need to perform. Only respond with the task, and do not include any other text in your response. Your task can involve multiple chained actions, and you can use actions to acquire information (Perplexity can be used to search for information, or if the user is asking about information pertaining to crypto, you may be able to use the associated crypto connection to retrieve the information). You do not need to provide any reasoning for the task. Your task should be clear and specific.\n\n"
-                        IF THE USER'S REQUEST IS A QUESTION AND NOT A TASK OR REQUEST THEN THE TASK IS: 'Answer the user's question: {user_query}'
-                        \n\nUSER QUERY:\n{user_query}
-                        \n\nAVAILABLE ACTIONS FOR EACH CONNECTION:\n\n
-                        {connection_action_list}
-                        """
-
+DETERMINATION_PROMPT = """Based on the given context and available actions, generate a complex task that you desire to perform. Only respond with the task, and do not include any other text in your response. Your task can involve multiple chained actions. You do not need to provide any reasoning for the task. If you are given context, you may choose whether or not to use it. If you do not have context, you must still choose a task to perform.\n\n"
+                        "CONTEXT SUMMARY:\n{context_summary}"
+                        "\n\nAVAILABLE ACTIONS FOR EACH CONNECTION:\n\n" 
+                        "{connection_action_list}"
+                        "Example Outputs:\n
+                        "1. Create a funny tweet and post it on Twitter "
+                        "2. Search for tweets about a specific topic and reply to them"""
+                        
 DIVISION_PROMPT = """Based on the given task and available actions, generate an action plan for the agent. Only respond with the list of steps needed (with the corresponding actions mentioned), and put each step on a new line. Only include actions that involve making requests—do not include actions like editing dialog boxes, clicking buttons, or other UI interactions.
                     
                     RULES:
