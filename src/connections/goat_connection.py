@@ -254,7 +254,7 @@ class GoatConnection(BaseConnection):
 
             register_action(tool.name)(
                 lambda agent, tool_name=tool.name, **kwargs: self.perform_action(
-                    tool_name, **kwargs
+                    tool_name, kwargs
                 )
             )
 

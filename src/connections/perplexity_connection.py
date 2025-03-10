@@ -37,13 +37,13 @@ class PerplexityConnection(BaseConnection):
         """Validate Perplexity configuration from JSON"""
         required_fields = ["model"]
         missing_fields = [field for field in required_fields if field not in config]
-
+        
         if missing_fields:
             raise ValueError(f"Missing required configuration fields: {', '.join(missing_fields)}")
-
+            
         if not isinstance(config["model"], str):
             raise ValueError("model must be a string")
-
+            
         return config
 
     def _get_client(self) -> OpenAI:
@@ -84,7 +84,7 @@ class PerplexityConnection(BaseConnection):
         logger.info("\n📝 To get your Perplexity API credentials:")
         logger.info("1. Go to https://www.perplexity.ai/settings")
         logger.info("2. Generate a new API key")
-
+        
         api_key = input("\nEnter your Perplexity API key: ")
 
         try:
@@ -93,11 +93,11 @@ class PerplexityConnection(BaseConnection):
                     f.write('')
 
             set_key('.env', 'PERPLEXITY_API_KEY', api_key)
-
+            
             # Test the configuration
             client = self._get_client()
             self.search("test")  # Simple test query
-
+            
             logger.info("\n✅ Perplexity API configuration successfully saved!")
             return True
 
@@ -116,7 +116,7 @@ class PerplexityConnection(BaseConnection):
             client = self._get_client()
             self.search("test")  # Quick test query
             return True
-
+            
         except Exception as e:
             if verbose:
                 logger.debug(f"Configuration check failed: {e}")
@@ -126,7 +126,7 @@ class PerplexityConnection(BaseConnection):
         """Perform a search query using Perplexity"""
         try:
             client = self._get_client()
-
+            
             # Use configured model if none provided
             if not model:
                 model = self.config.get("model", "sonar-reasoning-pro")
@@ -148,7 +148,7 @@ class PerplexityConnection(BaseConnection):
             )
 
             return completion.choices[0].message.content
-
+            
         except Exception as e:
             raise PerplexityAPIError(f"Search failed: {e}")
 
@@ -165,4 +165,4 @@ class PerplexityConnection(BaseConnection):
         # Call the appropriate method based on action name
         method_name = action_name.replace('-', '_')
         method = getattr(self, method_name)
-        return method(**kwargs)
+        return method(**kwargs) 

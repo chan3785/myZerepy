@@ -1,5 +1,4 @@
-import logging
-import time ,os
+import time ,os,threading,logging
 from dotenv import load_dotenv
 from src.action_handler import register_action
 from src.helpers import print_h_bar
@@ -99,3 +98,22 @@ def like_tweet(agent, **kwargs):
     else:
         logger.info("\n👀 No tweets found to like...")
     return False
+
+@register_action("respond-to-mentions")
+def respond_to_mentions(agent,**kwargs): #REQUIRES TWITTER PREMIUM PLAN
+
+    filter_str = f"@{agent.username} -is:retweet"
+    stream_function = agent.connection_manager.perform_action(
+        connection_name="twitter",
+        action_name="stream-tweets",
+        params=[filter_str]
+    )
+    def process_tweets():
+        for tweet_data in stream_function:
+            tweet_id = tweet_data["id"]
+            tweet_text = tweet_data["text"]
+            agent.logger.info(f"Received a mention: {tweet_text}")
+
+    processing_thread = threading.Thread(target=process_tweets)
+    processing_thread.daemon = True
+    processing_thread.start()

@@ -2,6 +2,7 @@ import sys
 import json
 import logging
 import os
+import shlex
 from dataclasses import dataclass
 from typing import Callable, Dict, List
 from pathlib import Path
@@ -267,18 +268,23 @@ class ZerePyCLI:
         return HTML(f'<prompt>ZerePy-CLI</prompt> {agent_status} > ')
 
     def _handle_command(self, input_string: str) -> None:
-            """Parse and handle a command input"""
-            input_list = input_string.split()
-            command_string = input_list[0].lower()
+        """Parse and handle a command input"""
+        try:
+            input_list = shlex.split(input_string)
+        except ValueError as e:
+            logger.error(f"Error parsing command: {e}")
+            return
 
-        #try:
+        command_string = input_list[0].lower()
+
+        try:
             command = self.commands.get(command_string)
             if command:
                 command.handler(input_list)
             else:
                 self._handle_unknown_command(command_string)
-        #except Exception as e:
-         #   logger.error(f"Error executing command: {e}")
+        except Exception as e:
+            logger.error(f"Error executing command: {e}")
 
     def _handle_unknown_command(self, command: str) -> None:
         """Handle unknown command with suggestions"""
