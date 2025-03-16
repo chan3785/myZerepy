@@ -22,18 +22,6 @@
     {
       "name": "anthropic",
       "model": "claude-3-5-sonnet-20240620"
-    },
-    {
-      "name": "sonic",
-      "network": "mainnet"
-    },
-    {
-      "name": "evm",
-      "network": "polygon"
-    },
-    {
-      "name": "allora",
-      "chain_slug": "testnet"
     }
   ],
   "tasks": [
