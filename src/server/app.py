@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
 
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -76,6 +77,16 @@ class ServerState:
 class ZerePyServer:
     def __init__(self):
         self.app = FastAPI(title="ZerePy Server")
+        
+        # CORS 미들웨어 설정 추가
+        self.app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],        #설정 바꿈 5173 -> *
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+        
         self.state = ServerState()
         self.setup_routes()
 
